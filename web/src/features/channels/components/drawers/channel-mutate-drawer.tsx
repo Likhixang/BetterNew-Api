@@ -124,6 +124,7 @@ import { ROLE } from '@/lib/roles'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
+import { getModels } from '@/features/models/api'
 import {
   fetchModels,
   getAllModels,
@@ -133,6 +134,7 @@ import {
   getPrefillGroups,
   refreshCodexCredential,
 } from '../../api'
+import { buildTestModelOptions } from '../../lib/test-model-options'
 import {
   CHANNEL_STATUS_LABELS,
   CHANNEL_TYPE_OPTIONS,
@@ -673,6 +675,24 @@ export function ChannelMutateDrawer({
     queryFn: getAllModels,
   })
 
+  // Fetch models registered in "Models & Groups" (models table) for the test model dropdown
+  const { data: modelMetaData } = useQuery({
+    queryKey: ['model_meta', 'all'],
+    queryFn: async () => {
+      const first = await getModels({ p: 1, page_size: 1000 })
+      const items = [...(first.data?.items ?? [])]
+      const total = first.data?.total ?? items.length
+      if (items.length < total) {
+        const pages = Math.ceil(total / 1000)
+        for (let p = 2; p <= pages; p++) {
+          const page = await getModels({ p, page_size: 1000 })
+          items.push(...(page.data?.items ?? []))
+        }
+      }
+      return items
+    },
+  })
+
   // Fetch prefill model groups
   const { data: prefillGroupsData } = useQuery({
     queryKey: ['prefill_groups', 'model'],
@@ -1127,6 +1147,13 @@ export function ChannelMutateDrawer({
       label: model,
     }))
   }, [allModelsList, currentModelsArray])
+
+  // Options for the test model dropdown: models registered in "Models & Groups",
+  // plus the current value as a fallback so existing custom entries stay visible.
+  const testModelOptions = useMemo(
+    () => buildTestModelOptions(modelMetaData ?? [], currentTestModel),
+    [modelMetaData, currentTestModel]
+  )
 
   const modelMappingGuardrail = useMemo<ModelMappingGuardrail>(() => {
     if (!currentModelMapping?.trim()) {
@@ -3515,11 +3542,16 @@ export function ChannelMutateDrawer({
                                 <FormItem>
                                   <FormLabel>{t('Test Model')}</FormLabel>
                                   <FormControl>
-                                    <Input
+                                    <Combobox
+                                      options={testModelOptions}
+                                      value={field.value ?? ''}
+                                      onValueChange={(value) =>
+                                        field.onChange(value)
+                                      }
                                       placeholder={t(
                                         FIELD_PLACEHOLDERS.TEST_MODEL
                                       )}
-                                      {...field}
+                                      allowCustomValue
                                     />
                                   </FormControl>
                                   <FormDescription>
