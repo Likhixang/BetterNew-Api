@@ -64,7 +64,7 @@
 
 - **可安装**：支持添加到主屏幕 / 桌面，独立窗口运行（`standalone`）
 - **离线可用**：Service Worker 预缓存全部静态资源，断网时可打开面板；API 请求（`/api`、`/pg`、`/mj`）始终走网络，绝不缓存
-- **动态应用名**：manifest 由后端动态生成（`/manifest.webmanifest`），应用名跟随系统设置中的系统名称（与网页标题同源）；修改后 Chrome/Edge 会自动同步，iOS 已安装的图标需重新添加到主屏幕
+- **动态应用名与图标**：manifest 由后端动态生成（`/manifest.webmanifest`），应用名跟随系统设置中的系统名称（与网页标题同源），PWA 图标跟随系统徽标 URL（未设置时用内置图标）；修改后 Chrome/Edge 会自动同步，iOS 已安装的图标需重新添加到主屏幕
 - **实现说明**：基于 Google 官方 [workbox-build](https://developer.chrome.com/docs/workbox/) 在构建期生成 Service Worker（`web/scripts/generate-sw.mjs`），图标由 `web/scripts/generate-pwa-assets.mjs` 基于 `logo.png` 生成（sharp）；采用官方库手动集成，非第三方 PWA 插件方案
 
 ## 快速开始
