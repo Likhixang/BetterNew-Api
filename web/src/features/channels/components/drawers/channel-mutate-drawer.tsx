@@ -107,10 +107,6 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import {
-  SecureVerificationDialog,
-  useSecureVerification,
-} from '@/features/auth/secure-verification'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useHiddenClickUnlock } from '@/hooks/use-hidden-click-unlock'
 import {
@@ -137,7 +133,6 @@ import {
   refreshCodexCredential,
 } from '../../api'
 import {
-  ADD_MODE_OPTIONS,
   CHANNEL_STATUS_LABELS,
   CHANNEL_TYPE_OPTIONS,
   CHANNEL_TYPE_WARNINGS,
@@ -684,17 +679,6 @@ export function ChannelMutateDrawer({
 
   const { copyToClipboard } = useCopyToClipboard()
 
-  const {
-    open: verificationOpen,
-    methods: verificationMethods,
-    state: verificationState,
-    executeVerification,
-    withVerification,
-    cancel: cancelVerification,
-    setCode: setVerificationCode,
-    switchMethod: switchVerificationMethod,
-  } = useSecureVerification()
-
   useEffect(() => {
     if (!open) {
       setChannelKey(null)
@@ -855,13 +839,6 @@ export function ChannelMutateDrawer({
   const isChannelDetailLoading = isEditing && isChannelLoading
   const supportsMultiKeyAddMode =
     currentType !== 57 && !(currentType === 41 && vertexKeyType === 'api_key')
-  const addModeOptions = useMemo(
-    () =>
-      supportsMultiKeyAddMode
-        ? ADD_MODE_OPTIONS
-        : ADD_MODE_OPTIONS.filter((option) => option.value === 'single'),
-    [supportsMultiKeyAddMode]
-  )
 
   const advancedCustomStats = useMemo(
     () => getAdvancedCustomStats(currentAdvancedCustom),
@@ -1351,48 +1328,38 @@ export function ChannelMutateDrawer({
     }
   }
 
-  const fetchChannelKey = useCallback(
-    async (proofToken?: string) => {
-      if (!channelId) {
-        throw new Error('Channel is not selected')
+  const fetchChannelKey = useCallback(async () => {
+    if (!channelId) {
+      throw new Error('Channel is not selected')
+    }
+
+    setIsChannelKeyLoading(true)
+    try {
+      const res = await getChannelKey(channelId)
+      if (!res.success) {
+        throw new Error(res.message || t('Failed to fetch channel key'))
       }
 
-      setIsChannelKeyLoading(true)
-      try {
-        const res = await getChannelKey(channelId, proofToken)
-        if (!res.success) {
-          throw new Error(res.message || t('Failed to fetch channel key'))
-        }
-
-        const keyValue = res.data?.key ?? ''
-        setChannelKey(keyValue)
-        toast.success(t('Channel key unlocked'))
-        return res
-      } finally {
-        setIsChannelKeyLoading(false)
-      }
-    },
-    [channelId, t]
-  )
+      const keyValue = res.data?.key ?? ''
+      setChannelKey(keyValue)
+      toast.success(t('Channel key unlocked'))
+      return res
+    } finally {
+      setIsChannelKeyLoading(false)
+    }
+  }, [channelId, t])
 
   const handleRevealKey = useCallback(async () => {
     if (!channelId) return
 
     try {
-      await withVerification(fetchChannelKey, {
-        scope: 'channel.key.read',
-        preferredMethod: 'passkey',
-        title: t('Verify to view channel key'),
-        description: t(
-          'Use Passkey or 2FA to confirm your identity before revealing this channel key.'
-        ),
-      })
+      await fetchChannelKey()
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message)
       }
     }
-  }, [channelId, withVerification, fetchChannelKey, t])
+  }, [channelId, fetchChannelKey])
 
   const handleRefreshCodexCredential = useCallback(async () => {
     if (!channelId) return
@@ -2866,51 +2833,13 @@ export function ChannelMutateDrawer({
                             )}
 
                             <ChannelAuthSection>
-                              {!isEditing && (
-                                <FormField
-                                  control={form.control}
-                                  name='multi_key_mode'
-                                  render={({ field }) => (
-                                    <FormItem className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                                      <FormLabel className='text-muted-foreground text-xs font-medium'>
-                                        {t('Add Mode')}
-                                      </FormLabel>
-                                      <Select
-                                        items={addModeOptions.map((option) => ({
-                                          value: option.value,
-                                          label: t(option.label),
-                                        }))}
-                                        onValueChange={field.onChange}
-                                        value={field.value}
-                                      >
-                                        <FormControl>
-                                          <SelectTrigger
-                                            size='sm'
-                                            className='w-full sm:w-56'
-                                          >
-                                            <SelectValue />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent
-                                          alignItemWithTrigger={false}
-                                        >
-                                          <SelectGroup>
-                                            {addModeOptions.map((option) => (
-                                              <SelectItem
-                                                key={option.value}
-                                                value={option.value}
-                                              >
-                                                {t(option.label)}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectGroup>
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                  )}
-                                />
-                              )}
+                              <FormField
+                                control={form.control}
+                                name='multi_key_mode'
+                                render={({ field }) => (
+                                  <input type='hidden' {...field} />
+                                )}
+                              />
 
                               <FormField
                                 control={form.control}
@@ -2981,7 +2910,7 @@ export function ChannelMutateDrawer({
                                     )
                                   } else if (isBatchMode) {
                                     keyDescription = t(
-                                      'Enter one API key per line for batch creation'
+                                      'Enter one API key per line'
                                     )
                                   }
                                   return (
@@ -3020,7 +2949,7 @@ export function ChannelMutateDrawer({
                                               </p>
                                               <p className='text-muted-foreground text-xs'>
                                                 {t(
-                                                  'Verification required to reveal the saved key.'
+                                                  'Click reveal to view the saved key.'
                                                 )}
                                               </p>
                                             </div>
@@ -3030,13 +2959,9 @@ export function ChannelMutateDrawer({
                                                 variant='outline'
                                                 size='sm'
                                                 onClick={handleRevealKey}
-                                                disabled={
-                                                  isChannelKeyLoading ||
-                                                  verificationState.loading
-                                                }
+                                                disabled={isChannelKeyLoading}
                                               >
-                                                {isChannelKeyLoading ||
-                                                verificationState.loading ? (
+                                                {isChannelKeyLoading ? (
                                                   <Loader2 className='mr-2 h-4 w-4 animate-spin' />
                                                 ) : (
                                                   <Eye className='mr-2 h-4 w-4' />
@@ -3065,7 +2990,7 @@ export function ChannelMutateDrawer({
                                             readOnly
                                             value={channelKey ?? ''}
                                             placeholder={t(
-                                              'Hidden — verify to reveal'
+                                              'Click reveal to view'
                                             )}
                                             className='font-mono'
                                           />
@@ -4829,23 +4754,6 @@ export function ChannelMutateDrawer({
             ? parseModelsString(form.getValues('models') || '')
             : undefined
         }
-      />
-
-      <SecureVerificationDialog
-        open={verificationOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            cancelVerification()
-          }
-        }}
-        methods={verificationMethods}
-        state={verificationState}
-        onVerify={async (method, code) => {
-          await executeVerification(method, code)
-        }}
-        onCancel={cancelVerification}
-        onCodeChange={setVerificationCode}
-        onMethodChange={switchVerificationMethod}
       />
 
       {/* Missing Models Confirmation Dialog */}

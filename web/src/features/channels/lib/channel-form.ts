@@ -420,7 +420,7 @@ export const CHANNEL_FORM_DEFAULT_VALUES: ChannelFormValues = {
   header_override: '',
   settings: '{}',
   other: '',
-  multi_key_mode: 'single',
+  multi_key_mode: 'multi_to_single',
   multi_key_type: 'random',
   batch_add_set_key_prefix_2_name: false,
   key_mode: 'append',
@@ -769,12 +769,17 @@ function normalizeBaseUrl(value: string | undefined): string {
  * Transform form data to API payload for creating channel
  */
 export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
-  mode: 'single' | 'batch' | 'multi_to_single'
+  mode: 'single' | 'multi_to_single'
   multi_key_mode?: 'random' | 'polling'
   batch_add_set_key_prefix_2_name?: boolean
   channel: Partial<Channel>
 } {
-  const mode = formData.multi_key_mode || 'single'
+  // 不区分单/多密钥：单行 → single；多行（一行一个 key）→ multi_to_single。
+  // 不支持多密钥的渠道类型（如 Codex、Vertex API Key）会被表单层强制为 single。
+  let mode: 'single' | 'multi_to_single' = 'single'
+  if (formData.multi_key_mode !== 'single' && formData.key.includes('\n')) {
+    mode = 'multi_to_single'
+  }
 
   const channel: Partial<Channel> = {
     name: formData.name,
@@ -811,8 +816,7 @@ export function transformFormDataToCreatePayload(formData: ChannelFormValues): {
     mode,
     multi_key_mode:
       mode === 'multi_to_single' ? formData.multi_key_type : undefined,
-    batch_add_set_key_prefix_2_name:
-      mode === 'batch' ? formData.batch_add_set_key_prefix_2_name : undefined,
+    batch_add_set_key_prefix_2_name: undefined,
     channel,
   }
 }
