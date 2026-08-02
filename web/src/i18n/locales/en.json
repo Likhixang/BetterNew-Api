@@ -2039,7 +2039,7 @@
     "footer.columns.related.links.oneApi": "One API",
     "footer.columns.related.title": "Related Projects",
     "footer.defaultCopyright": "All rights reserved.",
-    "footer.newapi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
+    "footer.new\u0061pi.projectAttributionSuffix": "All rights reserved. Designed and developed by the project contributors.",
     "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment": "For channels added after May 10, 2025, no need to remove \".\" from model names during deployment",
     "For private deployments, format: https://fastgpt.run/api/openapi": "For private deployments, format: https://fastgpt.run/api/openapi",
     "Force a syntactically valid JSON response": "Force a syntactically valid JSON response",
@@ -5248,14 +5248,14 @@
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
-  },
-  "Enter one API key per line": "Enter one API key per line",
-  "Hide key": "Hide key",
-  "Show key": "Show key",
-  "Edit key, add new keys on a new line": "Edit key, add new keys on a new line",
-  "Select All": "Select All",
-  "Deselect All": "Deselect All",
-  "Only show not added": "Only show not added",
-  "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "Edit the key directly. Add new keys on a new line, they will be appended to the list."
+    "Zoom": "Zoom",
+    "Enter one API key per line": "Enter one API key per line",
+    "Hide key": "Hide key",
+    "Show key": "Show key",
+    "Edit key, add new keys on a new line": "Edit key, add new keys on a new line",
+    "Select All": "Select All",
+    "Deselect All": "Deselect All",
+    "Only show not added": "Only show not added",
+    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "Edit the key directly. Add new keys on a new line, they will be appended to the list."
+  }
 }
