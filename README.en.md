@@ -60,6 +60,13 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Interface languages**: Simplified Chinese and English only
 - **Automated builds**: GitHub Actions builds and pushes images to GHCR, triggered on pushes to the `main` / `likhixang/patch` branches or on `v*` tags
 
+### 5. PWA Support
+
+- **Installable**: can be added to the home screen / desktop and runs in a standalone window
+- **Offline-ready**: a Service Worker precaches all built static assets so the dashboard opens offline; API calls (`/api`, `/pg`, `/mj`) always hit the network and are never cached
+- **Dynamic app name**: the manifest is served dynamically (`/manifest.webmanifest`) and the app name follows the system name configured in settings (same source as the page title). Chrome/Edge pick up changes automatically; on iOS, re-add the icon to the home screen
+- **Implementation notes**: the Service Worker is generated at build time with Google's official [workbox-build](https://developer.chrome.com/docs/workbox/) (`web/scripts/generate-sw.mjs`), and icons are generated from `logo.png` via `web/scripts/generate-pwa-assets.mjs` (sharp). Manual integration with official libraries — not a third-party PWA plugin
+
 ## Quick Start
 
 ```bash
