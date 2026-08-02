@@ -3556,6 +3556,7 @@ export function ChannelMutateDrawer({
                                     </FormControl>
                                     <SelectContent
                                       alignItemWithTrigger={false}
+                                      className='w-max max-w-80'
                                     >
                                       <SelectGroup>
                                         {testModelSelectItems.map((item) => (

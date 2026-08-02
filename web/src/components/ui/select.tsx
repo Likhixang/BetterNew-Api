@@ -162,7 +162,7 @@ function SelectItem({
     >
       <SelectPrimitive.ItemText
         data-slot='select-item-text'
-        className='flex flex-1 shrink-0 gap-2 whitespace-nowrap'
+        className='flex flex-1 shrink-0 gap-2 overflow-hidden text-ellipsis whitespace-nowrap'
       >
         {children}
       </SelectPrimitive.ItemText>
