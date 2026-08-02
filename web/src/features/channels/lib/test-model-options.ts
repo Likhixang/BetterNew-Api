@@ -18,11 +18,21 @@ For commercial licensing, please contact support@quantumnous.com
 */
 
 /**
+ * Special select value that maps to an empty test_model ("auto detect").
+ * The empty string itself is not used as an item value because Base UI
+ * treats it as "no selection"; this marker keeps the option selectable
+ * while the stored form value stays "".
+ */
+export const TEST_MODEL_AUTO_VALUE = '__auto__'
+
+/**
  * Build options for the channel "Test Model" dropdown.
  *
- * Options are the models registered in "Models & Groups" (models table).
+ * Options are the models registered in "Models & Groups" (models table),
+ * merged with the fallback model list (e.g. channel-level models) so the
+ * dropdown stays populated even if the models table query fails.
  * The current form value is always included as a fallback so existing
- * custom entries (not in the table) stay visible and selectable.
+ * custom entries (not in any list) stay visible and selectable.
  */
 export type TestModelOption = {
   value: string
@@ -31,14 +41,20 @@ export type TestModelOption = {
 
 export function buildTestModelOptions(
   models: Array<{ model_name?: string }>,
+  fallbackModels: string[] = [],
   currentValue?: string | null
 ): TestModelOption[] {
   const names = new Set<string>()
   models.forEach((model) => {
-    if (model.model_name) names.add(model.model_name)
+    if (model.model_name && model.model_name !== TEST_MODEL_AUTO_VALUE) {
+      names.add(model.model_name)
+    }
+  })
+  fallbackModels.forEach((name) => {
+    if (name && name !== TEST_MODEL_AUTO_VALUE) names.add(name)
   })
   const current = currentValue?.trim()
-  if (current) names.add(current)
+  if (current && current !== TEST_MODEL_AUTO_VALUE) names.add(current)
   return [...names]
     .sort((a, b) => a.localeCompare(b))
     .map((name) => ({ value: name, label: name }))

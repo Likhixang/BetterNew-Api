@@ -19,7 +19,10 @@ For commercial licensing, please contact support@quantumnous.com
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { buildTestModelOptions } from '../test-model-options'
+import {
+  buildTestModelOptions,
+  TEST_MODEL_AUTO_VALUE,
+} from '../test-model-options'
 
 describe('buildTestModelOptions', () => {
   test('returns sorted unique model names from the models table', () => {
@@ -35,9 +38,31 @@ describe('buildTestModelOptions', () => {
     ])
   })
 
-  test('includes the current value even when not present in the models table', () => {
+  test('merges fallback models and keeps the list populated when the table is empty', () => {
+    const options = buildTestModelOptions([], ['gpt-4o', 'deepseek-chat'])
+
+    assert.deepEqual(options, [
+      { value: 'deepseek-chat', label: 'deepseek-chat' },
+      { value: 'gpt-4o', label: 'gpt-4o' },
+    ])
+  })
+
+  test('deduplicates table and fallback models', () => {
     const options = buildTestModelOptions(
       [{ model_name: 'gpt-4o' }],
+      ['gpt-4o', 'deepseek-chat']
+    )
+
+    assert.deepEqual(options, [
+      { value: 'deepseek-chat', label: 'deepseek-chat' },
+      { value: 'gpt-4o', label: 'gpt-4o' },
+    ])
+  })
+
+  test('includes the current value even when not present in any list', () => {
+    const options = buildTestModelOptions(
+      [{ model_name: 'gpt-4o' }],
+      [],
       'custom-model-x'
     )
 
@@ -48,17 +73,14 @@ describe('buildTestModelOptions', () => {
   })
 
   test('trims the current value and skips empty ones', () => {
-    const options = buildTestModelOptions(
-      [{ model_name: 'gpt-4o' }],
-      '   '
-    )
+    const options = buildTestModelOptions([{ model_name: 'gpt-4o' }], [], '   ')
 
     assert.deepEqual(options, [{ value: 'gpt-4o', label: 'gpt-4o' }])
   })
 
   test('returns an empty array when there are no models and no current value', () => {
-    assert.deepEqual(buildTestModelOptions([], undefined), [])
-    assert.deepEqual(buildTestModelOptions([], null), [])
+    assert.deepEqual(buildTestModelOptions([], [], undefined), [])
+    assert.deepEqual(buildTestModelOptions([], [], null), [])
   })
 
   test('ignores entries without a model_name', () => {
@@ -69,5 +91,11 @@ describe('buildTestModelOptions', () => {
     ])
 
     assert.deepEqual(options, [{ value: 'gpt-4o', label: 'gpt-4o' }])
+  })
+
+  test('auto detect marker is a reserved value that never collides with model names', () => {
+    assert.equal(TEST_MODEL_AUTO_VALUE, '__auto__')
+    const options = buildTestModelOptions([], ['__auto__'])
+    assert.deepEqual(options, [])
   })
 })
