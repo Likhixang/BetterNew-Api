@@ -171,3 +171,12 @@ if (!rootElement.innerHTML) {
     </StrictMode>
   )
 }
+
+// PWA: register the service worker for offline support (production only)
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // SW is optional — a registration failure must not break the app
+    })
+  })
+}
