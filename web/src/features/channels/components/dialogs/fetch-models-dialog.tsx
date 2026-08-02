@@ -84,6 +84,7 @@ export function FetchModelsDialog({
   const [fetchedModels, setFetchedModels] = useState<string[]>([])
   const [selectedModels, setSelectedModels] = useState<string[]>([])
   const [searchKeyword, setSearchKeyword] = useState('')
+  const [onlyShowNotAdded, setOnlyShowNotAdded] = useState(false)
 
   // Parse existing models
   const existingModels = useMemo(
@@ -199,6 +200,7 @@ export function FetchModelsDialog({
     setFetchedModels([])
     setSelectedModels([])
     setSearchKeyword('')
+    setOnlyShowNotAdded(false)
     onOpenChange(false)
   }
 
@@ -258,6 +260,22 @@ export function FetchModelsDialog({
   const existingFilteredModels = filteredModels.filter((m) =>
     isExistingModel(m)
   )
+
+  // Visible models: respect "only show not added" filter
+  const visibleModels = onlyShowNotAdded ? newModels : filteredModels
+
+  const handleSelectAllVisible = () => {
+    setSelectedModels((prev) => {
+      const next = new Set(prev)
+      visibleModels.forEach((m) => next.add(m))
+      return [...next]
+    })
+  }
+
+  const handleDeselectAllVisible = () => {
+    const visibleSet = new Set(visibleModels)
+    setSelectedModels((prev) => prev.filter((m) => !visibleSet.has(m)))
+  }
 
   const newModelsByCategory = categorizeModels(newModels)
   const existingModelsByCategory = categorizeModels(existingFilteredModels)
@@ -431,6 +449,39 @@ export function FetchModelsDialog({
                 onChange={(e) => setSearchKeyword(e.target.value)}
                 className='pl-9'
               />
+            </div>
+
+            {/* Toolbar: select all / deselect all + only show not added */}
+            <div className='flex flex-wrap items-center justify-between gap-2'>
+              <div className='flex items-center gap-2'>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={handleSelectAllVisible}
+                  disabled={visibleModels.length === 0}
+                >
+                  {t('Select All')}
+                </Button>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='sm'
+                  onClick={handleDeselectAllVisible}
+                  disabled={visibleModels.length === 0}
+                >
+                  {t('Deselect All')}
+                </Button>
+              </div>
+              <label className='flex cursor-pointer items-center gap-2 text-sm'>
+                <Checkbox
+                  checked={onlyShowNotAdded}
+                  onCheckedChange={(checked) =>
+                    setOnlyShowNotAdded(!!checked)
+                  }
+                />
+                {t('Only show not added')}
+              </label>
             </div>
 
             {/* Tabs for New vs Existing vs Removed */}
