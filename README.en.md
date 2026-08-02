@@ -25,42 +25,42 @@
 
 </div>
 
-## 📌 About
+## Introduction
 
-This repository is a **fork of [QuantumNous/new-api](https://github.com/QuantumNous/new-api)** (a next-generation LLM gateway and AI asset management system), customized for a better day-to-day management experience.
+This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNous/new-api) — a next-generation LLM gateway and AI asset management system. It retains all upstream features while introducing optimizations to channel management and model maintenance workflows.
 
-**Forked from**: [QuantumNous/new-api](https://github.com/QuantumNous/new-api)
-**License**: AGPL-3.0 (this fork keeps the upstream copyright notice and license text)
+- **Forked from**: [QuantumNous/new-api](https://github.com/QuantumNous/new-api)
+- **License**: AGPL-3.0 (upstream copyright notice and license text are retained)
 
-## ✨ Key Differences from Upstream
+## Differences from Upstream
 
 ### 1. Channel Key Management
 
-- **Inline key display**: Keys live directly in the input field — hidden by default, revealed with an eye toggle, copyable with one click
-- **Masked preview**: When hidden, each key line shows first 4 + last 4 chars (`sk-a1b2****9z8y`) instead of a dotted field
-- **WYSIWYG editing**: Add a key on a new line = append; select-all and rewrite = replace. No mode selector needed
-- **No reveal verification**: Viewing a key no longer requires a verification code
-- **OpenAI organization ID removed**: No longer required in channel config
-- **Mobile-friendly**: Long keys no longer break the layout — fixed width with internal scroll
+- **Inline key display**: Keys are embedded directly in the input field, hidden by default, with a toggle for plaintext view and one-click copy
+- **Masked key preview**: When hidden, each line shows only the first 4 and last 4 characters (`sk-a1b2****9z8y`) instead of being fully masked with dots
+- **WYSIWYG editing**: Adding a key on a new line appends it; selecting all and rewriting replaces the list — no manual mode selection required
+- **Key verification removed**: Viewing keys no longer requires a verification code
+- **OpenAI organization ID removed**: The organization ID field is no longer required in channel configuration
+- **Mobile layout adaptation**: The key input uses a fixed width with internal scrolling for overflow, preventing form layout breakage
 
 ### 2. Upstream Model Detection
 
-- **Allowed models (whitelist)**: Only models matching the list are considered addable — supports exact names and `regex:` patterns
-- **Ignored models (blacklist)**: Models matching the list are excluded (upstream feature)
-- **Combined**: Whitelist and blacklist can be used independently or together (whitelist first, then blacklist)
-- **Enabled by default**: Upstream model update check is on by default
+- **Model whitelist (allowed models)**: Upstream models are only considered addable when they match the whitelist — supports exact names and `regex:` patterns
+- **Model blacklist (ignored models)**: Excludes upstream models that match the blacklist
+- **Combined filtering**: The whitelist and blacklist can be configured independently or applied together; filtering is applied whitelist-first, then blacklist
+- **Enabled by default**: Upstream model update detection is enabled by default
 
 ### 3. Fetch Models Dialog
 
-- **Select All / Deselect All**: Bulk toggle the currently visible model list
-- **Only show not added**: Filter out models that are already added
+- **Select All / Deselect All**: Bulk selection of the currently visible models
+- **Only show not added**: Filters out already-added models to focus on pending additions
 
 ### 4. UI & Build
 
 - **Interface languages**: Simplified Chinese and English only
-- **Automated builds**: GitHub Actions builds and pushes images to GHCR on pushes to `main` / `likhixang/patch` and on `v*` tags
+- **Automated builds**: GitHub Actions builds and pushes images to GHCR, triggered on pushes to the `main` / `likhixang/patch` branches or on `v*` tags
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 docker run -d --restart always --name betternew-api \
@@ -69,16 +69,16 @@ docker run -d --restart always --name betternew-api \
   ghcr.io/likhixang/betternew-api:latest
 ```
 
-Or use the `docker-compose.yml` in this repo:
+Alternatively, use the `docker-compose.yml` in this repository:
 
 ```bash
 docker compose up -d
 ```
 
-## 📚 Documentation
+## Documentation
 
-Full feature and deployment docs live upstream: [QuantumNous/new-api](https://github.com/QuantumNous/new-api)
+For full feature and deployment documentation, refer to the upstream project: [QuantumNous/new-api](https://github.com/QuantumNous/new-api)
 
-## 📄 License
+## License
 
-[AGPL-3.0](LICENSE) — a modified version of [QuantumNous/new-api](https://github.com/QuantumNous/new-api), keeping the upstream copyright notice and license text.
+[AGPL-3.0](LICENSE) — a modified version of [QuantumNous/new-api](https://github.com/QuantumNous/new-api), retaining the upstream copyright notice and license text.
