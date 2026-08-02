@@ -154,6 +154,7 @@ import {
   deduplicateKeys,
   getChannelTypeIcon,
   getKeyPromptForType,
+  maskKeys,
   parseModelsString,
   formatModelsArray,
   extractRedirectModels,
@@ -2873,12 +2874,17 @@ export function ChannelMutateDrawer({
                                           <Textarea
                                             placeholder={keyPlaceholder}
                                             rows={isBatchMode ? 8 : 4}
-                                            className={
+                                            className='font-mono'
+                                            value={
                                               showKey
-                                                ? 'font-mono'
-                                                : 'font-mono [text-security:disc] [-webkit-text-security:disc]'
+                                                ? field.value
+                                                : maskKeys(field.value)
                                             }
-                                            {...field}
+                                            readOnly={!showKey}
+                                            onChange={field.onChange}
+                                            onBlur={field.onBlur}
+                                            name={field.name}
+                                            ref={field.ref}
                                           />
                                           <div className='absolute right-2 top-2 flex items-center gap-1'>
                                             <Button

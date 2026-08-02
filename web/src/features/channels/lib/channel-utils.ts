@@ -29,6 +29,20 @@ import {
 } from '../constants'
 import type { Channel, ChannelSettings, ChannelOtherSettings } from '../types'
 
+// 密钥脱敏：每行保留前 4 位与后 4 位，中间用星号遮蔽（AxonHub 风格）。
+// 空行与过短（<=8 位）的行原样保留，避免信息误判。
+export function maskKeys(value: string): string {
+  if (!value) return value
+  return value
+    .split('\n')
+    .map((line) => {
+      const trimmed = line.trim()
+      if (!trimmed || trimmed.length <= 8) return line
+      return `${trimmed.slice(0, 4)}****${trimmed.slice(-4)}`
+    })
+    .join('\n')
+}
+
 // ============================================================================
 // Channel Type Utilities
 // ============================================================================
