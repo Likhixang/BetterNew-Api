@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - likhixang/patch1
+      - likhixang/patch
     tags:
       - 'v*'
   workflow_dispatch:
