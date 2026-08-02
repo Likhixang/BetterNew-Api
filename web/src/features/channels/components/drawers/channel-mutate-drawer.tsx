@@ -2874,7 +2874,7 @@ export function ChannelMutateDrawer({
                                           <Textarea
                                             placeholder={keyPlaceholder}
                                             rows={isBatchMode ? 8 : 4}
-                                            className='font-mono'
+                                            className='font-mono field-sizing-fixed pr-16'
                                             value={
                                               showKey
                                                 ? field.value
