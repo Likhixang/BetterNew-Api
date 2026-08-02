@@ -36,6 +36,7 @@ import {
   Eraser,
   Plus,
   Eye,
+  EyeOff,
   RefreshCw,
   Code,
   Route,
@@ -614,8 +615,7 @@ export function ChannelMutateDrawer({
   )
   const canRevealChannelKey = currentUser?.role === ROLE.SUPER_ADMIN
   const [fetchModelsDialogOpen, setFetchModelsDialogOpen] = useState(false)
-  const [channelKey, setChannelKey] = useState<string | null>(null)
-  const [isChannelKeyLoading, setIsChannelKeyLoading] = useState(false)
+  const [showKey, setShowKey] = useState(false)
   const [isCodexCredentialRefreshing, setIsCodexCredentialRefreshing] =
     useState(false)
   const initialModelsRef = useRef<string[]>([])
@@ -681,12 +681,9 @@ export function ChannelMutateDrawer({
 
   useEffect(() => {
     if (!open) {
-      setChannelKey(null)
-      setIsChannelKeyLoading(false)
-    } else if (channelId) {
-      setChannelKey(null)
+      setShowKey(false)
     }
-  }, [open, channelId])
+  }, [open])
 
   // Check if this is a multi-key channel
   const isMultiKeyChannel =
@@ -1328,38 +1325,29 @@ export function ChannelMutateDrawer({
     }
   }
 
-  const fetchChannelKey = useCallback(async () => {
-    if (!channelId) {
-      throw new Error('Channel is not selected')
+  // 编辑渠道时自动加载已保存的密钥到 API Key 输入框（超管）
+  useEffect(() => {
+    if (!isEditing || !channelId || !canRevealChannelKey) return
+
+    let cancelled = false
+    getChannelKey(channelId)
+      .then((res) => {
+        if (cancelled || !res.success) return
+        const keyValue = res.data?.key ?? ''
+        if (keyValue) {
+          form.setValue('key', keyValue, {
+            shouldDirty: false,
+            shouldValidate: false,
+          })
+        }
+      })
+      .catch(() => {
+        // 加载失败时保持输入框为空，用户可手动填写
+      })
+    return () => {
+      cancelled = true
     }
-
-    setIsChannelKeyLoading(true)
-    try {
-      const res = await getChannelKey(channelId)
-      if (!res.success) {
-        throw new Error(res.message || t('Failed to fetch channel key'))
-      }
-
-      const keyValue = res.data?.key ?? ''
-      setChannelKey(keyValue)
-      toast.success(t('Channel key unlocked'))
-      return res
-    } finally {
-      setIsChannelKeyLoading(false)
-    }
-  }, [channelId, t])
-
-  const handleRevealKey = useCallback(async () => {
-    if (!channelId) return
-
-    try {
-      await fetchChannelKey()
-    } catch (error) {
-      if (error instanceof Error) {
-        toast.error(error.message)
-      }
-    }
-  }, [channelId, fetchChannelKey])
+  }, [isEditing, channelId, canRevealChannelKey, form])
 
   const handleRefreshCodexCredential = useCallback(async () => {
     if (!channelId) return
@@ -2044,25 +2032,7 @@ export function ChannelMutateDrawer({
                               control={form.control}
                               name='openai_organization'
                               render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>
-                                    {t('OpenAI Organization')}
-                                  </FormLabel>
-                                  <FormControl>
-                                    <Input
-                                      placeholder={t('org-...')}
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormDescription>
-                                    {sensitiveLocked
-                                      ? t(
-                                          'No permission to perform this action'
-                                        )
-                                      : t(FIELD_DESCRIPTIONS.OPENAI_ORG)}
-                                  </FormDescription>
-                                  <FormMessage />
-                                </FormItem>
+                                <input type='hidden' {...field} />
                               )}
                             />
                           </fieldset>
@@ -2850,7 +2820,7 @@ export function ChannelMutateDrawer({
                                   )
                                   if (isEditing) {
                                     keyPlaceholder = t(
-                                      'Leave empty to keep existing key'
+                                      'Edit key, add new keys on a new line'
                                     )
                                   } else if (
                                     currentType === 33 &&
@@ -2899,7 +2869,7 @@ export function ChannelMutateDrawer({
                                     keyDescription = (
                                       <>
                                         {t(
-                                          'Enter new key to update, or leave empty to keep current key'
+                                          'Edit the key directly. Add new keys on a new line.'
                                         )}
                                         {isMultiKeyChannel && (
                                           <span className='text-warning mt-1 block'>
@@ -2917,11 +2887,57 @@ export function ChannelMutateDrawer({
                                     <FormItem>
                                       <FormLabel>{t('API Key *')}</FormLabel>
                                       <FormControl>
-                                        <Textarea
-                                          placeholder={keyPlaceholder}
-                                          rows={isBatchMode ? 8 : 4}
-                                          {...field}
-                                        />
+                                        <div className='relative'>
+                                          <Textarea
+                                            placeholder={keyPlaceholder}
+                                            rows={isBatchMode ? 8 : 4}
+                                            className={
+                                              showKey
+                                                ? 'font-mono'
+                                                : 'font-mono [text-security:disc] [-webkit-text-security:disc]'
+                                            }
+                                            {...field}
+                                          />
+                                          <div className='absolute right-2 top-2 flex items-center gap-1'>
+                                            <Button
+                                              type='button'
+                                              variant='ghost'
+                                              size='sm'
+                                              className='h-7 w-7 p-0'
+                                              onClick={() =>
+                                                setShowKey((v) => !v)
+                                              }
+                                              title={
+                                                showKey
+                                                  ? t('Hide key')
+                                                  : t('Show key')
+                                              }
+                                            >
+                                              {showKey ? (
+                                                <EyeOff className='h-4 w-4' />
+                                              ) : (
+                                                <Eye className='h-4 w-4' />
+                                              )}
+                                            </Button>
+                                            <Button
+                                              type='button'
+                                              variant='ghost'
+                                              size='sm'
+                                              className='h-7 w-7 p-0'
+                                              onClick={async () => {
+                                                if (field.value) {
+                                                  await copyToClipboard(
+                                                    field.value
+                                                  )
+                                                }
+                                              }}
+                                              disabled={!field.value}
+                                              title={t('Copy')}
+                                            >
+                                              <Copy className='h-4 w-4' />
+                                            </Button>
+                                          </div>
+                                        </div>
                                       </FormControl>
                                       <FormDescription>
                                         <div className='flex flex-col gap-2'>
@@ -2940,62 +2956,6 @@ export function ChannelMutateDrawer({
                                           )}
                                         </div>
                                       </FormDescription>
-                                      {isEditing && canRevealChannelKey && (
-                                        <div className='border-border/60 mt-4 flex flex-col gap-3 border-y border-dashed py-4'>
-                                          <div className='flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between'>
-                                            <div>
-                                              <p className='text-sm font-medium'>
-                                                {t('Current key')}
-                                              </p>
-                                              <p className='text-muted-foreground text-xs'>
-                                                {t(
-                                                  'Click reveal to view the saved key.'
-                                                )}
-                                              </p>
-                                            </div>
-                                            <div className='flex items-center gap-2'>
-                                              <Button
-                                                type='button'
-                                                variant='outline'
-                                                size='sm'
-                                                onClick={handleRevealKey}
-                                                disabled={isChannelKeyLoading}
-                                              >
-                                                {isChannelKeyLoading ? (
-                                                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
-                                                ) : (
-                                                  <Eye className='mr-2 h-4 w-4' />
-                                                )}
-                                                {t('Reveal key')}
-                                              </Button>
-                                              <Button
-                                                type='button'
-                                                variant='ghost'
-                                                size='sm'
-                                                onClick={async () => {
-                                                  if (channelKey) {
-                                                    await copyToClipboard(
-                                                      channelKey
-                                                    )
-                                                  }
-                                                }}
-                                                disabled={!channelKey}
-                                              >
-                                                <Copy className='mr-2 h-4 w-4' />
-                                                {t('Copy')}
-                                              </Button>
-                                            </div>
-                                          </div>
-                                          <Input
-                                            readOnly
-                                            value={channelKey ?? ''}
-                                            placeholder={t(
-                                              'Click reveal to view'
-                                            )}
-                                            className='font-mono'
-                                          />
-                                        </div>
-                                      )}
                                       <FormMessage />
                                     </FormItem>
                                   )

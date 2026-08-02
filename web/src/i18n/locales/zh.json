@@ -5252,5 +5252,9 @@
   },
   "Click reveal to view": "点击显示",
   "Click reveal to view the saved key.": "点击显示已保存的密钥。",
-  "Enter one API key per line": "每行输入一个 API 密钥"
+  "Enter one API key per line": "每行输入一个 API 密钥",
+  "Hide key": "隐藏密钥",
+  "Show key": "显示密钥",
+  "Edit key, add new keys on a new line": "编辑密钥，新密钥换行添加",
+  "Edit the key directly. Add new keys on a new line.": "直接编辑密钥，新密钥在下一行添加。"
 }
