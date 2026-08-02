@@ -5248,6 +5248,14 @@
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Enter one API key per line": "Enter one API key per line",
+    "Hide key": "Hide key",
+    "Show key": "Show key",
+    "Edit key, add new keys on a new line": "Edit key, add new keys on a new line",
+    "Select All": "Select All",
+    "Deselect All": "Deselect All",
+    "Only show not added": "Only show not added",
+    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "Edit the key directly. Add new keys on a new line, they will be appended to the list."
   }
 }
