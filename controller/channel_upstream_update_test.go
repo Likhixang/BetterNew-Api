@@ -502,6 +502,7 @@ func TestCollectPendingUpstreamModelChangesFromModels_WithModelMapping(t *testin
 		[]string{"alias-model", "gpt-4o", "stale-model"},
 		[]string{"gpt-4o", "gpt-4.1", "mapped-target"},
 		[]string{"gpt-4.1"},
+		nil,
 		map[string]string{
 			"alias-model": "mapped-target",
 		},
@@ -517,10 +518,62 @@ func TestCollectPendingUpstreamModelChangesFromModels_WithIgnoredRegexPatterns(t
 		[]string{"gpt-4o", "claude-3-5-sonnet", "sora-video", "gpt-4.1"},
 		[]string{"regex:^sora-.*$", "gpt-4.1"},
 		nil,
+		nil,
 	)
 
 	require.Equal(t, []string{"claude-3-5-sonnet"}, pendingAddModels)
 	require.Equal(t, []string{}, pendingRemoveModels)
+}
+
+func TestCollectPendingUpstreamModelChangesFromModels_WithAllowedModels(t *testing.T) {
+	t.Run("allows only exact matches when configured", func(t *testing.T) {
+		pendingAddModels, pendingRemoveModels := collectPendingUpstreamModelChangesFromModels(
+			[]string{"gpt-4o"},
+			[]string{"gpt-4o", "gpt-4.1", "claude-3-5-sonnet", "sora-video"},
+			nil,
+			[]string{"gpt-4.1", "sora-video"},
+			nil,
+		)
+
+		require.Equal(t, []string{"gpt-4.1", "sora-video"}, pendingAddModels)
+		require.Equal(t, []string{}, pendingRemoveModels)
+	})
+
+	t.Run("supports regex patterns in allowed list", func(t *testing.T) {
+		pendingAddModels, _ := collectPendingUpstreamModelChangesFromModels(
+			[]string{},
+			[]string{"gpt-4o", "gpt-4.1", "gpt-4.1-mini", "claude-3-5-sonnet"},
+			nil,
+			[]string{"regex:^gpt-4"},
+			nil,
+		)
+
+		require.Equal(t, []string{"gpt-4o", "gpt-4.1", "gpt-4.1-mini"}, pendingAddModels)
+	})
+
+	t.Run("allowed and ignored combine: whitelist first, then blacklist", func(t *testing.T) {
+		pendingAddModels, _ := collectPendingUpstreamModelChangesFromModels(
+			[]string{},
+			[]string{"gpt-4o", "gpt-4.1", "gpt-4.1-mini", "claude-3-5-sonnet"},
+			[]string{"gpt-4o", "regex:^claude-"},
+			[]string{"regex:^gpt-"},
+			nil,
+		)
+
+		require.Equal(t, []string{"gpt-4.1", "gpt-4.1-mini"}, pendingAddModels)
+	})
+
+	t.Run("empty allowed list means no filtering", func(t *testing.T) {
+		pendingAddModels, _ := collectPendingUpstreamModelChangesFromModels(
+			[]string{},
+			[]string{"gpt-4o", "claude-3-5-sonnet"},
+			nil,
+			nil,
+			nil,
+		)
+
+		require.Equal(t, []string{"gpt-4o", "claude-3-5-sonnet"}, pendingAddModels)
+	})
 }
 
 func TestBuildUpstreamModelUpdateTaskNotificationContent_OmitOverflowDetails(t *testing.T) {

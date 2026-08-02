@@ -5256,6 +5256,8 @@
     "Select All": "Select All",
     "Deselect All": "Deselect All",
     "Only show not added": "Only show not added",
-    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "Edit the key directly. Add new keys on a new line, they will be appended to the list."
+    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "Edit the key directly. Add new keys on a new line, they will be appended to the list.",
+    "Allowed upstream models": "Allowed upstream models",
+    "Only models matching this list are considered addable. Leave empty to allow all. Comma-separated exact model names; prefix with regex: to match by regular expression. Combined with ignored models: allowed first, then ignored.": "Only models matching this list are considered addable. Leave empty to allow all. Comma-separated exact model names; prefix with regex: to match by regular expression. Combined with ignored models: allowed first, then ignored."
   }
 }

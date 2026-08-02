@@ -5256,6 +5256,8 @@
     "Select All": "全选",
     "Deselect All": "取消全选",
     "Only show not added": "仅显示未添加",
-    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "直接编辑密钥，在下一行添加新密钥将追加到列表末尾。"
+    "Edit the key directly. Add new keys on a new line, they will be appended to the list.": "直接编辑密钥，在下一行添加新密钥将追加到列表末尾。",
+    "Allowed upstream models": "筛选所需模型",
+    "Only models matching this list are considered addable. Leave empty to allow all. Comma-separated exact model names; prefix with regex: to match by regular expression. Combined with ignored models: allowed first, then ignored.": "只有匹配此列表的模型才被视为可添加。留空表示允许全部。逗号分隔的精确模型名；前缀 regex: 表示按正则匹配。与忽略模型组合使用时：先按筛选所需过滤，再按忽略过滤。"
   }
 }

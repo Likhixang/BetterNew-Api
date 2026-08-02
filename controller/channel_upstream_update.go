@@ -176,10 +176,30 @@ func normalizeChannelModelMapping(channel *model.Channel) map[string]string {
 	return normalized
 }
 
+// matchesModelPattern reports whether modelName matches a pattern entry.
+// Entries are exact names by default; a "regex:" prefix switches to a
+// regular expression match. Invalid regexes never match.
+func matchesModelPattern(modelName string, pattern string) bool {
+	if regexBody, ok := strings.CutPrefix(pattern, "regex:"); ok {
+		matched, err := regexp.MatchString(strings.TrimSpace(regexBody), modelName)
+		return err == nil && matched
+	}
+	return pattern == modelName
+}
+
+// matchesAnyModelPattern reports whether modelName matches at least one of
+// the given pattern entries.
+func matchesAnyModelPattern(modelName string, patterns []string) bool {
+	return lo.ContainsBy(patterns, func(pattern string) bool {
+		return matchesModelPattern(modelName, pattern)
+	})
+}
+
 func collectPendingUpstreamModelChangesFromModels(
 	localModels []string,
 	upstreamModels []string,
 	ignoredModels []string,
+	allowedModels []string,
 	modelMapping map[string]string,
 ) (pendingAddModels []string, pendingRemoveModels []string) {
 	localSet := make(map[string]struct{})
@@ -194,6 +214,7 @@ func collectPendingUpstreamModelChangesFromModels(
 	}
 
 	normalizedIgnoredModels := normalizeModelNames(ignoredModels)
+	normalizedAllowedModels := normalizeModelNames(allowedModels)
 
 	redirectSourceSet := make(map[string]struct{}, len(modelMapping))
 	redirectTargetSet := make(map[string]struct{}, len(modelMapping))
@@ -214,13 +235,13 @@ func collectPendingUpstreamModelChangesFromModels(
 		if _, ok := coveredUpstreamSet[modelName]; ok {
 			return false
 		}
-		if lo.ContainsBy(normalizedIgnoredModels, func(ignoredModel string) bool {
-			if regexBody, ok := strings.CutPrefix(ignoredModel, "regex:"); ok {
-				matched, err := regexp.MatchString(strings.TrimSpace(regexBody), modelName)
-				return err == nil && matched
-			}
-			return ignoredModel == modelName
-		}) {
+		// Whitelist filter: when allowed models are configured, only models
+		// matching one of the allowed patterns are considered addable.
+		if len(normalizedAllowedModels) > 0 &&
+			!matchesAnyModelPattern(modelName, normalizedAllowedModels) {
+			return false
+		}
+		if matchesAnyModelPattern(modelName, normalizedIgnoredModels) {
 			return false
 		}
 		return true
@@ -246,6 +267,7 @@ func collectPendingUpstreamModelChanges(channel *model.Channel, settings dto.Cha
 		channel.GetModels(),
 		upstreamModels,
 		settings.UpstreamModelUpdateIgnoredModels,
+		settings.UpstreamModelUpdateAllowedModels,
 		normalizeChannelModelMapping(channel),
 	)
 	return pendingAddModels, pendingRemoveModels, nil

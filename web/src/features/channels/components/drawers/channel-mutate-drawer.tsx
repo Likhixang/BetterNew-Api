@@ -344,7 +344,8 @@ function hasAdvancedSettingsValues(values: ChannelFormValues): boolean {
     values.claude_beta_query ||
     values.upstream_model_update_check_enabled ||
     values.upstream_model_update_auto_sync_enabled ||
-    values.upstream_model_update_ignored_models?.trim()
+    values.upstream_model_update_ignored_models?.trim() ||
+    values.upstream_model_update_allowed_models?.trim()
   )
 }
 
@@ -748,6 +749,9 @@ export function ChannelMutateDrawer({
   const currentUpstreamModelUpdateIgnoredModels = form.watch(
     'upstream_model_update_ignored_models'
   )
+  const currentUpstreamModelUpdateAllowedModels = form.watch(
+    'upstream_model_update_allowed_models'
+  )
   const shouldPreviewUnsavedModels =
     !isEditing ||
     (currentType === CHANNEL_TYPE_ADVANCED_CUSTOM && canEditSensitive)
@@ -1019,7 +1023,8 @@ export function ChannelMutateDrawer({
   const upstreamModelDetectionConfigured = Boolean(
     upstreamModelUpdateCheckEnabled ||
     currentUpstreamModelUpdateAutoSyncEnabled ||
-    currentUpstreamModelUpdateIgnoredModels?.trim()
+    currentUpstreamModelUpdateIgnoredModels?.trim() ||
+    currentUpstreamModelUpdateAllowedModels?.trim()
   )
   const advancedConfigured = Boolean(
     routingStrategyConfigured ||
@@ -4503,6 +4508,31 @@ export function ChannelMutateDrawer({
                                   )}
                                 />
                               </div>
+                              <FormField
+                                control={form.control}
+                                name='upstream_model_update_allowed_models'
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>
+                                      {t('Allowed upstream models')}
+                                    </FormLabel>
+                                    <FormControl>
+                                      <Input
+                                        placeholder={t(
+                                          'e.g., gpt-4o,regex:^claude-.*$'
+                                        )}
+                                        {...field}
+                                      />
+                                    </FormControl>
+                                    <FormDescription>
+                                      {t(
+                                        'Only models matching this list are considered addable. Leave empty to allow all. Comma-separated exact model names; prefix with regex: to match by regular expression. Combined with ignored models: allowed first, then ignored.'
+                                      )}
+                                    </FormDescription>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
                               <FormField
                                 control={form.control}
                                 name='upstream_model_update_ignored_models'
