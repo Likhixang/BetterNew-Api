@@ -33,6 +33,7 @@ jobs:
             TAG="${GITHUB_REF#refs/tags/}"
           else
             TAG="${GITHUB_REF#refs/heads/}"
+            TAG="${TAG//\//-}"
           fi
           echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
