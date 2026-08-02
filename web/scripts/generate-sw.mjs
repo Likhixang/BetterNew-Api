@@ -12,7 +12,6 @@ const result = await generateSW({
     '**/*.png',
     '**/*.svg',
     '**/*.ico',
-    '**/*.webmanifest',
     '**/*.woff',
     '**/*.woff2',
     '**/*.ttf',

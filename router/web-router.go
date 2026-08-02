@@ -25,6 +25,11 @@ func SetWebRouter(router *gin.Engine, assets WebAssets) {
 	router.Use(gzip.Gzip(gzip.DefaultCompression))
 	router.Use(middleware.GlobalWebRateLimit())
 	router.Use(middleware.Cache())
+	// Dynamic PWA manifest (system name follows site branding).
+	// Must be registered even though static.Serve below runs first: the
+	// middleware only shadows requests whose file exists in web/dist, and
+	// manifest.webmanifest is intentionally not shipped as a static file.
+	router.GET("/manifest.webmanifest", controller.GetPwaManifest)
 	router.Use(static.Serve("/", frontendFS))
 	router.NoRoute(func(c *gin.Context) {
 		c.Set(middleware.RouteTagKey, "web")
