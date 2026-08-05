@@ -87,7 +87,7 @@
 | 用途 | 镜像 |
 |---|---|
 | **生产镜像**（自动更新） | `ghcr.io/likhixang/betternew-api:latest` |
-| **固定版本镜像**（patch1） | `ghcr.io/likhixang/betternew-api:patch1` |
+| **固定版本镜像**（v1.0.0-rc.23-patch1） | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch1` |
 | **测试镜像**（patch/test 分支） | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash
