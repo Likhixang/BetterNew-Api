@@ -73,3 +73,28 @@ export async function deleteModelMerge(id: number): Promise<ApiResponse<null>> {
   )
   return response.data
 }
+
+export type ModelMergePreviewChannel = {
+  id: number
+  name: string
+  type: number
+  status: number
+  models: string[]
+}
+
+export type ModelMergePreviewPayload = {
+  alias: string
+  match_type: 0 | 1
+}
+
+// PreviewModelMerge returns, for a draft alias/match_type, every channel whose
+// configured models match the rule (live preview in the merge drawer).
+export async function previewModelMerge(
+  payload: ModelMergePreviewPayload
+): Promise<ModelMergePreviewChannel[]> {
+  const response = await api.post<ApiResponse<ModelMergePreviewChannel[]>>(
+    '/api/models/merges/preview',
+    payload
+  )
+  return response.data.data ?? []
+}

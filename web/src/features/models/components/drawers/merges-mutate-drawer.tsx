@@ -17,13 +17,14 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Form,
@@ -49,9 +50,11 @@ import {
   sideDrawerContentClassName,
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
+import { useDebounce } from '@/hooks/use-debounce'
 
 import {
   createModelMerge,
+  previewModelMerge,
   type ModelMerge,
   updateModelMerge,
 } from '../../lib/merge-actions'
@@ -156,6 +159,79 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending
 
+  // Live match preview: watch alias + match type, debounce, then ask the
+  // backend which channels/models this draft rule would hit.
+  const watchedAlias = useWatch({ control: form.control, name: 'alias' })
+  const watchedMatchType = useWatch({ control: form.control, name: 'match_type' })
+  const debouncedAlias = useDebounce((watchedAlias ?? '').trim(), 500)
+
+  const { data: previewChannels = [], isFetching: previewFetching } = useQuery({
+    queryKey: ['model-merge-preview', debouncedAlias, watchedMatchType],
+    queryFn: () =>
+      previewModelMerge({ alias: debouncedAlias, match_type: watchedMatchType }),
+    enabled:
+      debouncedAlias.length > 0 && (watchedMatchType === 0 || watchedMatchType === 1),
+  })
+
+  const previewError =
+    debouncedAlias.length > 0 && previewChannels.length === 0
+      ? t('No channels match this rule.')
+      : null
+
+  function renderPreviewContent() {
+    if (debouncedAlias.length === 0) {
+      return (
+        <p className='mt-3 text-sm text-muted-foreground'>
+          {t('Enter an alias to see matching channels and models.')}
+        </p>
+      )
+    }
+    if (previewError) {
+      return <p className='mt-3 text-sm text-destructive'>{previewError}</p>
+    }
+    return (
+      <>
+        <p className='mt-3 text-xs font-medium text-muted-foreground'>
+          {t('{{count}} channels matched', { count: previewChannels.length })}
+        </p>
+        <div className='mt-2 max-h-56 space-y-2 overflow-y-auto pr-1'>
+          {previewChannels.map((channel) => (
+            <div
+              key={channel.id}
+              className='rounded-md border bg-background p-2.5'
+            >
+              <div className='flex items-center gap-2'>
+                <span className='truncate text-sm font-medium'>
+                  {channel.name}
+                </span>
+                {channel.status === 1 ? (
+                  <Badge className='shrink-0 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'>
+                    {t('Enabled')}
+                  </Badge>
+                ) : (
+                  <Badge variant='secondary' className='shrink-0'>
+                    {t('Disabled')}
+                  </Badge>
+                )}
+              </div>
+              <div className='mt-1.5 flex flex-wrap gap-1'>
+                {channel.models.map((modelName) => (
+                  <Badge
+                    key={modelName}
+                    variant='outline'
+                    className='max-w-full truncate font-mono text-xs'
+                  >
+                    {modelName}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </>
+    )
+  }
+
   return (
     <Sheet open={props.open} onOpenChange={props.onOpenChange}>
       <SheetContent className={sideDrawerContentClassName('sm:max-w-2xl')}>
@@ -214,6 +290,26 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
               </FormItem>
             )}
           />
+
+          <div className='rounded-lg border bg-muted/30 p-4'>
+            <div className='flex items-center justify-between'>
+              <div className='space-y-1'>
+                <p className='text-sm font-medium'>{t('Match Preview')}</p>
+                <p className='text-xs text-muted-foreground'>
+                  {t(
+                    'Live preview of which channels and models this rule matches.'
+                  )}
+                </p>
+              </div>
+              {previewFetching && (
+                <span className='text-xs text-muted-foreground'>
+                  {t('Checking...')}
+                </span>
+              )}
+            </div>
+
+            {renderPreviewContent()}
+          </div>
 
           <FormField
             control={form.control}

@@ -130,3 +130,35 @@ func validateModelMergeRegex(alias string) error {
 	}
 	return nil
 }
+
+// PreviewModelMerge returns, for a draft alias/match_type, every channel whose
+// configured models match the rule. Used by the merge drawer's live preview so
+// admins see exactly which channels and models a rule would affect before saving.
+func PreviewModelMerge(c *gin.Context) {
+	var req struct {
+		Alias     string `json:"alias"`
+		MatchType int    `json:"match_type"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	channels, err := model.GetAllChannelsOmitKey()
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	result, err := model.PreviewModelMergeMatches(channels, req.Alias, req.MatchType)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "message": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    result,
+	})
+}

@@ -351,6 +351,7 @@ func SetApiRouter(router *gin.Engine) {
 			modelsRoute.POST("/merges", controller.CreateModelMerge)
 			modelsRoute.PUT("/merges", controller.UpdateModelMerge)
 			modelsRoute.DELETE("/merges/:id", controller.DeleteModelMerge)
+			modelsRoute.POST("/merges/preview", controller.PreviewModelMerge)
 			modelsRoute.GET("/", controller.GetAllModelsMeta)
 			modelsRoute.GET("/search", controller.SearchModelsMeta)
 			modelsRoute.GET("/:id", controller.GetModelMeta)

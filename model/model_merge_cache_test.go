@@ -138,3 +138,91 @@ func TestMergeModelNameNotReady(t *testing.T) {
 	modelMergeReady = true
 	modelMergeMutex.Unlock()
 }
+
+func TestPreviewModelMergeMatchesExact(t *testing.T) {
+	channels := []*Channel{
+		{Id: 1, Name: "ds-direct", Type: 1, Status: 1, Models: "deepseek-v4-flash,claude-opus-4-8"},
+		{Id: 2, Name: "ds-cx", Type: 1, Status: 1, Models: "cx/deepseek-v4-flash,gpt-5.5"},
+		{Id: 3, Name: "misc", Type: 1, Status: 1, Models: "gemini-2.5-pro"},
+	}
+
+	result, err := PreviewModelMergeMatches(channels, "deepseek-v4-flash", ModelMergeMatchExact)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 {
+		t.Fatalf("expected 1 channel, got %d", len(result))
+	}
+	if result[0].Id != 1 || result[0].Name != "ds-direct" {
+		t.Fatalf("unexpected channel: %+v", result[0])
+	}
+	if len(result[0].Models) != 1 || result[0].Models[0] != "deepseek-v4-flash" {
+		t.Fatalf("unexpected matched models: %v", result[0].Models)
+	}
+}
+
+func TestPreviewModelMergeMatchesRegex(t *testing.T) {
+	channels := []*Channel{
+		{Id: 1, Name: "ds-direct", Type: 1, Status: 1, Models: "deepseek-v4-flash,deepseek-v4-pro,claude-opus-4-8"},
+		{Id: 2, Name: "ds-cx", Type: 1, Status: 1, Models: "cx/deepseek-v4-flash,gpt-5.5"},
+		{Id: 3, Name: "misc", Type: 1, Status: 1, Models: "gemini-2.5-pro"},
+	}
+
+	result, err := PreviewModelMergeMatches(channels, `(?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash`, ModelMergeMatchRegex)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 channels, got %d", len(result))
+	}
+	// Both channels matched, each with exactly one model
+	for _, ch := range result {
+		if len(ch.Models) != 1 {
+			t.Fatalf("channel %s expected 1 matched model, got %v", ch.Name, ch.Models)
+		}
+	}
+}
+
+func TestPreviewModelMergeMatchesNoHit(t *testing.T) {
+	channels := []*Channel{
+		{Id: 1, Name: "misc", Type: 1, Status: 1, Models: "gemini-2.5-pro,gpt-5.5"},
+	}
+
+	result, err := PreviewModelMergeMatches(channels, "deepseek-v4-flash", ModelMergeMatchExact)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 0 {
+		t.Fatalf("expected no channels, got %d", len(result))
+	}
+}
+
+func TestPreviewModelMergeMatchesSkipsDisabledChannelsModels(t *testing.T) {
+	// A channel with no models or nil must not break the preview; models with
+	// blank entries are skipped rather than compared.
+	channels := []*Channel{
+		{Id: 1, Name: "empty", Type: 1, Status: 1, Models: ""},
+		nil,
+		{Id: 3, Name: "trailing", Type: 1, Status: 1, Models: "deepseek-v4-flash,"},
+	}
+
+	result, err := PreviewModelMergeMatches(channels, "deepseek-v4-flash", ModelMergeMatchExact)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 1 || result[0].Id != 3 {
+		t.Fatalf("expected only channel 3 to match, got %+v", result)
+	}
+}
+
+func TestPreviewModelMergeMatchesInvalidRegex(t *testing.T) {
+	if _, err := PreviewModelMergeMatches(nil, "([unclosed", ModelMergeMatchRegex); err == nil {
+		t.Fatal("expected invalid regex error")
+	}
+}
+
+func TestPreviewModelMergeMatchesEmptyAlias(t *testing.T) {
+	if _, err := PreviewModelMergeMatches(nil, "  ", ModelMergeMatchExact); err == nil {
+		t.Fatal("expected empty alias error")
+	}
+}

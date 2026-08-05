@@ -174,6 +174,32 @@ describe('MergesTable', () => {
     assert.ok(host.textContent?.includes('No model merge rules yet.'))
   })
 
+  test('shows total rule count without pagination controls on a single page', async () => {
+    const rules = Array.from({ length: 9 }, (_, index) => ({
+      id: index + 1,
+      target_model: `model-${index + 1}`,
+      alias: `alias-${index + 1}`,
+      match_type: 0,
+      status: 1,
+      created_time: 1,
+      updated_time: 1,
+    }))
+    installGetMock(rules)
+
+    const { host } = await renderTable()
+
+    await waitForCondition(
+      () => host.textContent?.includes('9 rules') === true,
+      'single page should still show the total rule count'
+    )
+    // No page-number links when everything fits on one page
+    const pageLinks = [...host.querySelectorAll('a')].filter((link) =>
+      /^\d+$/.test(link.textContent?.trim() ?? '')
+    )
+    assert.equal(pageLinks.length, 0, 'no page number links on single page')
+    assert.ok(host.textContent?.includes('alias-9'))
+  })
+
   test('invokes onEdit with the clicked rule', async () => {
     installGetMock([
       {

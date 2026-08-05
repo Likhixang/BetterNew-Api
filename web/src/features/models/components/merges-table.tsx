@@ -169,11 +169,11 @@ export function MergesTable(props: MergesTableProps) {
         </TableBody>
       </Table>
 
-      {totalPages > 1 && (
-        <div className='flex items-center justify-between border-t px-4 py-2'>
-          <p className='text-xs text-muted-foreground'>
-            {t('{{count}} rules', { count: merges.length })}
-          </p>
+      <div className='flex items-center justify-between border-t px-4 py-2'>
+        <p className='text-xs text-muted-foreground'>
+          {t('{{count}} rules', { count: merges.length })}
+        </p>
+        {totalPages > 1 && (
           <Pagination className='justify-end'>
             <PaginationContent>
               <PaginationItem>
@@ -224,8 +224,8 @@ export function MergesTable(props: MergesTableProps) {
               </PaginationItem>
             </PaginationContent>
           </Pagination>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
