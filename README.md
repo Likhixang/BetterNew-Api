@@ -68,7 +68,27 @@
 - **动态应用名与图标**：manifest 由后端动态生成（`/manifest.webmanifest`），应用名跟随系统设置中的系统名称（与网页标题同源），PWA 图标跟随系统徽标 URL（未设置时用内置图标）；修改后 Chrome/Edge 会自动同步，iOS 已安装的图标需重新添加到主屏幕
 - **实现说明**：基于 Google 官方 [workbox-build](https://developer.chrome.com/docs/workbox/) 在构建期生成 Service Worker（`web/scripts/generate-sw.mjs`），图标由 `web/scripts/generate-pwa-assets.mjs` 基于 `logo.png` 生成（sharp）；采用官方库手动集成，非第三方 PWA 插件方案
 
+### 六、令牌级模型映射（Token-level Model Mapping）
+
+- **Key 级模型重定向**：每个 API Key 可配置模型映射（如 `claude-opus-4-8 → deepseek-v4-pro`），请求到达后先按**原始请求模型**做白名单校验，再重定向为映射目标模型用于渠道选择、上游转发与计费
+- **可视化编辑**：令牌表单提供 Visual（表格行：原始模型 → 替换模型，下拉选择）与 JSON（1:1 编辑 + 格式化/复制）双视图，支持重复映射拦截
+- **对标 AxonHub**：语义与 AxonHub profiles 的 `modelMappings` 一致，适用于 key 级按需降级 / 平替场景
+
+### 七、其他改进
+
+- **渠道测试模型下拉**：测试模型改为从渠道已配置模型中选择的真实下拉框（含"Models & Groups"来源），宽度自适应
+- **表单重置修复**：创建渠道成功后关闭抽屉会正确重置表单与高级设置面板状态
+- **版本号**：镜像内置版本号固定为 `v1.0.0-rc.23-patch1`（API 响应头 `X-New-Api-Version` 与前端版本页一致）
+
 ## 快速开始
+
+### 镜像
+
+| 用途 | 镜像 |
+|---|---|
+| **生产镜像**（自动更新） | `ghcr.io/likhixang/betternew-api:latest` |
+| **固定版本镜像**（patch1） | `ghcr.io/likhixang/betternew-api:patch1` |
+| **测试镜像**（patch/test 分支） | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash
 docker run -d --restart always --name betternew-api \

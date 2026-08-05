@@ -67,7 +67,27 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Dynamic app name & icons**: the manifest is served dynamically (`/manifest.webmanifest`); the app name follows the system name configured in settings (same source as the page title), and the PWA icons follow the configured logo URL (built-in icons when unset). Chrome/Edge pick up changes automatically; on iOS, re-add the icon to the home screen
 - **Implementation notes**: the Service Worker is generated at build time with Google's official [workbox-build](https://developer.chrome.com/docs/workbox/) (`web/scripts/generate-sw.mjs`), and icons are generated from `logo.png` via `web/scripts/generate-pwa-assets.mjs` (sharp). Manual integration with official libraries — not a third-party PWA plugin
 
+### 6. Token-level Model Mapping
+
+- **Per-key model redirect**: every API key can define model mappings (e.g. `claude-opus-4-8 → deepseek-v4-pro`). Requests are first checked against the model whitelist using the **original requested model**, then redirected to the mapped model for channel selection, upstream relay, and billing
+- **Visual editor**: the key form ships a dual-view editor — Visual (table rows: original → replacement, with model dropdowns) and JSON (1:1 editing with format/copy), plus duplicate-source detection
+- **AxonHub parity**: semantics match AxonHub profiles' `modelMappings`, suited for per-key fallback / substitution scenarios
+
+### 7. Other Improvements
+
+- **Channel test-model dropdown**: test model is now a real dropdown sourced from the channel's configured models (incl. "Models & Groups"), with adaptive width
+- **Form reset fix**: closing the create-channel drawer after a successful submission properly resets the form and advanced-settings panel state
+- **Version**: images embed a pinned version `v1.0.0-rc.23-patch1` (both the `X-New-Api-Version` response header and the frontend version page)
+
 ## Quick Start
+
+### Images
+
+| Purpose | Image |
+|---|---|
+| **Production** (auto-updated) | `ghcr.io/likhixang/betternew-api:latest` |
+| **Pinned release** (patch1) | `ghcr.io/likhixang/betternew-api:patch1` |
+| **Testing** (patch/test branch) | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash
 docker run -d --restart always --name betternew-api \
