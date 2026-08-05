@@ -1527,6 +1527,16 @@ export function ChannelMutateDrawer({
     [form]
   )
 
+  // Reset create-mode form state (used on both manual close and success close)
+  const resetCreateForm = useCallback(() => {
+    form.reset(CHANNEL_FORM_DEFAULT_VALUES)
+    advancedNavScrollPendingRef.current = false
+    setActiveEditorSectionId(CHANNEL_EDITOR_SECTION_IDS.identity)
+    setExpandedEditorNavItemId(undefined)
+    setAdvancedSettingsOpen(false)
+    setClipboardConnectionInfo(null)
+  }, [form])
+
   // Handle successful submission
   const handleSuccess = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: channelsQueryKeys.lists() })
@@ -1535,9 +1545,13 @@ export function ChannelMutateDrawer({
         queryKey: channelsQueryKeys.detail(channelId),
       })
     }
+    // Reset form so the next "Create Channel" open starts blank. Previously
+    // this called onOpenChange(false) directly, bypassing handleOpenChange's
+    // reset and leaving the previous submission's values in the form.
+    resetCreateForm()
     onOpenChange(false)
     setOpen(null)
-  }, [channelId, queryClient, onOpenChange, setOpen])
+  }, [channelId, queryClient, onOpenChange, resetCreateForm, setOpen])
 
   // Show missing models confirmation dialog
   const confirmMissingModelMappings = useCallback(
@@ -1825,15 +1839,10 @@ export function ChannelMutateDrawer({
     (v: boolean) => {
       onOpenChange(v)
       if (!v) {
-        form.reset(CHANNEL_FORM_DEFAULT_VALUES)
-        advancedNavScrollPendingRef.current = false
-        setActiveEditorSectionId(CHANNEL_EDITOR_SECTION_IDS.identity)
-        setExpandedEditorNavItemId(undefined)
-        setAdvancedSettingsOpen(false)
-        setClipboardConnectionInfo(null)
+        resetCreateForm()
       }
     },
-    [onOpenChange, form]
+    [onOpenChange, resetCreateForm]
   )
 
   return (
