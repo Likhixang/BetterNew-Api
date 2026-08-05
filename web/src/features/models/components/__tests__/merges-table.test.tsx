@@ -48,12 +48,25 @@ for (const key of domGlobals) {
 const { QueryClient, QueryClientProvider } =
   await import('@tanstack/react-query')
 const { api } = await import('@/lib/api')
+const { PageFooterProvider } = await import(
+  '@/components/layout/components/page-footer'
+)
 const { MergesTable } = await import('../merges-table')
 
 const i18n = createInstance()
 await i18n.use(initReactI18next).init({
   lng: 'en',
-  resources: { en: { translation: {} } },
+  nsSeparator: false, // Allow literal colons in keys (matches src/i18n/config.ts)
+  resources: {
+    en: {
+      translation: {
+        'Total:': 'Total:',
+        'Go to page {{page}}': 'Go to page {{page}}',
+        'Go to previous page': 'Go to previous page',
+        'Go to next page': 'Go to next page',
+      },
+    },
+  },
 })
 
 const reactTestGlobals = globalThis as typeof globalThis & {
@@ -67,6 +80,7 @@ type RenderedTable = {
   host: HTMLDivElement
   queryClient: InstanceType<typeof QueryClient>
   root: ReturnType<typeof createRoot>
+  footer: HTMLDivElement
 }
 
 const apiClient = api as unknown as MockableApi
@@ -104,11 +118,15 @@ async function renderTable(): Promise<RenderedTable> {
   })
   const host = document.createElement('div')
   document.body.appendChild(host)
+  const footer = document.createElement('div')
+  document.body.appendChild(footer)
   const root = createRoot(host)
   root.render(
-    <QueryClientProvider client={queryClient}>
-      <MergesTable onEdit={() => undefined} />
-    </QueryClientProvider>
+    <PageFooterProvider container={footer}>
+      <QueryClientProvider client={queryClient}>
+        <MergesTable onEdit={() => undefined} />
+      </QueryClientProvider>
+    </PageFooterProvider>
   )
   await waitForCondition(
     () =>
@@ -116,7 +134,7 @@ async function renderTable(): Promise<RenderedTable> {
       host.textContent?.includes('No model merge rules yet.') === true,
     'table did not render data or empty state'
   )
-  return { host, queryClient, root }
+  return { host, queryClient, root, footer }
 }
 
 afterEach(() => {
@@ -174,7 +192,7 @@ describe('MergesTable', () => {
     assert.ok(host.textContent?.includes('No model merge rules yet.'))
   })
 
-  test('shows total rule count without pagination controls on a single page', async () => {
+  test('always shows pagination bar with disabled controls on a single page', async () => {
     const rules = Array.from({ length: 9 }, (_, index) => ({
       id: index + 1,
       target_model: `model-${index + 1}`,
@@ -186,18 +204,41 @@ describe('MergesTable', () => {
     }))
     installGetMock(rules)
 
-    const { host } = await renderTable()
+    const { host, footer } = await renderTable()
 
     await waitForCondition(
-      () => host.textContent?.includes('9 rules') === true,
-      'single page should still show the total rule count'
+      () => host.textContent?.includes('alias-9') === true,
+      'single page should render all rules'
     )
-    // No page-number links when everything fits on one page
-    const pageLinks = [...host.querySelectorAll('a')].filter((link) =>
-      /^\d+$/.test(link.textContent?.trim() ?? '')
+    // Standard pagination bar (DataTablePagination) is always rendered:
+    // total count + page controls, even on a single page.
+    assert.ok(
+      footer.textContent?.includes('Total:'),
+      'pagination bar should show the total label'
     )
-    assert.equal(pageLinks.length, 0, 'no page number links on single page')
-    assert.ok(host.textContent?.includes('alias-9'))
+    // Only page 1 button exists; Previous/Next are disabled.
+    const pageNumberButtons = [...footer.querySelectorAll('button')].filter(
+      (button) =>
+        button
+          .querySelector('.sr-only')
+          ?.textContent?.includes('Go to page 1') === true
+    )
+    assert.equal(
+      pageNumberButtons.length,
+      1,
+      'only page 1 button on a single page'
+    )
+    const allButtons = [...footer.querySelectorAll('button')]
+    const previousButton = allButtons.find((button) =>
+      button.querySelector('.sr-only')?.textContent?.includes(
+        'Go to previous page'
+      )
+    )
+    const nextButton = allButtons.find((button) =>
+      button.querySelector('.sr-only')?.textContent?.includes('Go to next page')
+    )
+    assert.ok(previousButton?.disabled, 'Previous should be disabled')
+    assert.ok(nextButton?.disabled, 'Next should be disabled')
   })
 
   test('invokes onEdit with the clicked rule', async () => {
@@ -249,7 +290,7 @@ describe('MergesTable', () => {
     }))
     installGetMock(rules)
 
-    const { host } = await renderTable()
+    const { host, footer } = await renderTable()
 
     // First page shows 10 rows
     await waitForCondition(
@@ -260,12 +301,11 @@ describe('MergesTable', () => {
     assert.ok(host.textContent?.includes('alias-10'))
     assert.ok(!host.textContent?.includes('alias-11'))
 
-    // Navigate to page 2
-    const pageButtons = [...host.querySelectorAll('a')].filter((link) =>
-      link.textContent?.trim()
+    // Navigate to page 2 via the standard pagination bar
+    const pageTwo = [...footer.querySelectorAll('button')].find((button) =>
+      button.querySelector('.sr-only')?.textContent?.includes('Go to page 2')
     )
-    const pageTwo = pageButtons.find((link) => link.textContent?.trim() === '2')
-    assert.ok(pageTwo, 'page 2 link should exist')
+    assert.ok(pageTwo, 'page 2 button should exist')
     pageTwo.click()
 
     await waitForCondition(
