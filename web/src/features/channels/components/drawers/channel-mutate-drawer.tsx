@@ -2905,7 +2905,6 @@ export function ChannelMutateDrawer({
                                                 ? field.value
                                                 : maskKeys(field.value)
                                             }
-                                            readOnly={!showKey}
                                             onChange={field.onChange}
                                             onBlur={field.onBlur}
                                             name={field.name}
