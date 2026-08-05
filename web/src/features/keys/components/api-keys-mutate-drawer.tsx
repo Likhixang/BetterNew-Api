@@ -88,6 +88,7 @@ import {
 } from './api-key-group-combobox'
 import { useApiKeys } from './api-keys-provider'
 import { AutoGroupOrderEditor } from './auto-group-order-editor'
+import { ModelMappingEditor } from '../../channels/components/model-mapping-editor'
 
 type ApiKeyMutateDrawerProps = {
   open: boolean
@@ -724,18 +725,17 @@ export function ApiKeysMutateDrawer({
                         <FormItem>
                           <FormLabel>{t('Model Mapping')}</FormLabel>
                           <FormControl>
-                            <Textarea
-                              {...field}
-                              className='min-h-20 resize-none font-mono text-xs'
-                              placeholder={t(
-                                '{"claude-opus-4-8": "deepseek-v4-pro"}'
-                              )}
-                              rows={3}
+                            <ModelMappingEditor
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              disabled={isSubmitting}
+                              sourceModelOptions={models}
+                              targetModelOptions={models}
                             />
                           </FormControl>
                           <FormDescription>
                             {t(
-                              'Redirect a requested model to another model for this key. JSON object, empty for no mapping.'
+                              'Redirect a requested model to another model for this key.'
                             )}
                           </FormDescription>
                           <FormMessage />
