@@ -3472,7 +3472,7 @@
     "Preparing chat keys…": "正在准备聊天密钥…",
     "Preparing your chat link, please try again in a moment.": "正在准备您的聊天链接，请稍后再试。",
     "Preparing your chat link…": "正在准备您的聊天链接...",
-    "Prepend": "前置追加",
+    "Prepend": "前置",
     "Prepend to Start": "追加到开头",
     "Prepend value to array / string / object start": "把值追加到数组/字符串/对象开头",
     "Presence Penalty": "存在惩罚",
@@ -5286,6 +5286,13 @@
     "{{count}} channels matched": "共 {{count}} 个渠道命中",
     "Checking...": "检查中...",
     "{{count}} rules": "共 {{count}} 条规则",
-    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "每行一个别名。精确模型名或 Go 正则（如 (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash）。"
+    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "每行一个别名。精确模型名或 Go 正则（如 (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash）。",
+    "Enable Global Prompt Injection": "启用全局提示词注入",
+    "Prepend, append or override the system prompt on every relayed request, regardless of upstream protocol.": "在每个转发的请求中前置、追加或覆盖系统提示词，与上游协议无关。",
+    "Injection Mode": "注入模式",
+    "Prepend adds the prompt before the existing system content, append after it, override replaces it entirely.": "前置会在现有系统内容前添加提示词，追加在其后，覆盖则完全替换。",
+    "Prompt Content": "提示词内容",
+    "Enter the system prompt to inject into every request.": "输入要注入到每个请求的系统提示词。",
+    "Applied to OpenAI, Claude and Gemini protocol requests. Channel-level system prompts still apply on top.": "适用于 OpenAI、Claude 和 Gemini 协议的请求。渠道级系统提示词仍会在其上生效。"
   }
 }

@@ -44,6 +44,9 @@ func TextHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *types
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
 
+	// Global prompt injection (system settings -> Global Model Configuration)
+	InjectGlobalPromptOpenAI(request)
+
 	includeUsage := true
 	// 判断用户是否需要返回使用情况
 	if request.StreamOptions != nil {

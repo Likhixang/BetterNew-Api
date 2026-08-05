@@ -37,8 +37,11 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Separator } from '@/components/ui/separator'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 
 import {
   SettingsForm,
@@ -92,6 +95,11 @@ const schema = z.object({
     pass_through_request_enabled: z.boolean(),
     thinking_model_blacklist: jsonString,
     chat_completions_to_responses_policy: jsonString,
+    global_prompt_injection: z.object({
+      enabled: z.boolean(),
+      action: z.string(),
+      content: z.string(),
+    }),
   }),
   general_setting: z.object({
     ping_interval_enabled: z.boolean(),
@@ -106,6 +114,7 @@ type FlatGlobalModelSettings = {
   'global.pass_through_request_enabled': boolean
   'global.thinking_model_blacklist': string
   'global.chat_completions_to_responses_policy': string
+  'global.global_prompt_injection': string
   'general_setting.ping_interval_enabled': boolean
   'general_setting.ping_interval_seconds': number
 }
@@ -122,6 +131,9 @@ const flattenGlobalValues = (
   'global.chat_completions_to_responses_policy': normalizeJsonText(
     values.global.chat_completions_to_responses_policy,
     '{}'
+  ),
+  'global.global_prompt_injection': JSON.stringify(
+    values.global.global_prompt_injection
   ),
   'general_setting.ping_interval_enabled':
     values.general_setting.ping_interval_enabled,
@@ -208,6 +220,118 @@ export function GlobalSettingsCard({ defaultValues }: GlobalSettingsCardProps) {
               </SettingsSwitchItem>
             )}
           />
+
+          <Separator />
+
+          <div className='space-y-4'>
+            <FormField
+              control={form.control}
+              name='global.global_prompt_injection.enabled'
+              render={({ field }) => (
+                <SettingsSwitchItem>
+                  <SettingsSwitchContent>
+                    <FormLabel>{t('Enable Global Prompt Injection')}</FormLabel>
+                    <FormDescription>
+                      {t(
+                        'Prepend, append or override the system prompt on every relayed request, regardless of upstream protocol.'
+                      )}
+                    </FormDescription>
+                  </SettingsSwitchContent>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                </SettingsSwitchItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='global.global_prompt_injection.action'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Injection Mode')}</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      className='flex gap-4'
+                    >
+                      <div className='flex items-center gap-2'>
+                        <RadioGroupItem
+                          value='prepend'
+                          id='gpi-action-prepend'
+                        />
+                        <Label
+                          htmlFor='gpi-action-prepend'
+                          className='cursor-pointer text-sm font-normal'
+                        >
+                          {t('Prepend')}
+                        </Label>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <RadioGroupItem value='append' id='gpi-action-append' />
+                        <Label
+                          htmlFor='gpi-action-append'
+                          className='cursor-pointer text-sm font-normal'
+                        >
+                          {t('Append')}
+                        </Label>
+                      </div>
+                      <div className='flex items-center gap-2'>
+                        <RadioGroupItem
+                          value='override'
+                          id='gpi-action-override'
+                        />
+                        <Label
+                          htmlFor='gpi-action-override'
+                          className='cursor-pointer text-sm font-normal'
+                        >
+                          {t('Override')}
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Prepend adds the prompt before the existing system content, append after it, override replaces it entirely.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name='global.global_prompt_injection.content'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('Prompt Content')}</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      className='min-h-32 resize-none font-mono text-xs'
+                      placeholder={t(
+                        'Enter the system prompt to inject into every request.'
+                      )}
+                      rows={6}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    {t(
+                      'Applied to OpenAI, Claude and Gemini protocol requests. Channel-level system prompts still apply on top.'
+                    )}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <Separator />
 
           <FormField
             control={form.control}
