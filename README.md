@@ -74,11 +74,25 @@
 - **可视化编辑**：令牌表单提供 Visual（表格行：原始模型 → 替换模型，下拉选择）与 JSON（1:1 编辑 + 格式化/复制）双视图，支持重复映射拦截
 - **对标 AxonHub**：语义与 AxonHub profiles 的 `modelMappings` 一致，适用于 key 级按需降级 / 平替场景
 
-### 七、其他改进
+### 七、模型合并（Model Merge）
+
+- **入站模型名归一化**：全局规则将请求中的模型名（精确匹配或 Go 正则）合并为规范目标模型（如 `cx/deepseek-v4-flash` → `deepseek-v4-flash`），作用于渠道选择、上游转发与计费
+- **多别名支持**：一条规则可配置多个别名（每行一个），全部独立注册、共享同一目标模型
+- **实时匹配预览**：编辑规则时按渠道实时预览命中的模型与渠道，精确匹配优先、正则按规则 ID 升序
+- **标准表格框架**：规则列表使用标准 DataTablePage 框架（分页 / 每页条数 / 总条数），抽屉采用标准布局
+
+### 八、全局提示词注入（Global Prompt Injection）
+
+- **全局 System Prompt**：系统设置 → 模型与路由 → 全局模型配置，可为所有转发的请求注入统一的系统提示词
+- **三种注入模式**：前置（prepend）/ 追加（append）/ 覆盖（override）现有系统提示词
+- **全协议覆盖**：OpenAI、Claude、Gemini 协议均生效；渠道级系统提示词仍可在其上叠加
+- **对标 AxonHub**：对应 AxonHub 的全局 prompt 注入能力（prepend / append），配置在 WebUI 完成
+
+### 九、其他改进
 
 - **渠道测试模型下拉**：测试模型改为从渠道已配置模型中选择的真实下拉框（含"Models & Groups"来源），宽度自适应
 - **表单重置修复**：创建渠道成功后关闭抽屉会正确重置表单与高级设置面板状态
-- **版本号**：镜像内置版本号固定为 `v1.0.0-rc.23-patch1`（API 响应头 `X-New-Api-Version` 与前端版本页一致）
+- **版本号**：镜像内置版本号固定为 `v1.0.0-rc.23-patch2`（API 响应头 `X-New-Api-Version` 与前端版本页一致）
 
 ## 快速开始
 
@@ -87,7 +101,7 @@
 | 用途 | 镜像 |
 |---|---|
 | **生产镜像**（自动更新） | `ghcr.io/likhixang/betternew-api:latest` |
-| **固定版本镜像**（v1.0.0-rc.23-patch1） | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch1` |
+| **固定版本镜像**（v1.0.0-rc.23-patch2） | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch2` |
 | **测试镜像**（patch/test 分支） | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash

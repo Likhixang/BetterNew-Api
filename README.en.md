@@ -73,11 +73,25 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Visual editor**: the key form ships a dual-view editor — Visual (table rows: original → replacement, with model dropdowns) and JSON (1:1 editing with format/copy), plus duplicate-source detection
 - **AxonHub parity**: semantics match AxonHub profiles' `modelMappings`, suited for per-key fallback / substitution scenarios
 
-### 7. Other Improvements
+### 7. Model Merge
+
+- **Inbound model-name normalization**: global rules rewrite requested model names (exact match or Go regex) into a canonical target model (e.g. `cx/deepseek-v4-flash` → `deepseek-v4-flash`), applied to channel selection, upstream relay, and billing
+- **Multi-alias rules**: a single rule can carry multiple aliases (one per line), each registered independently against the shared target model
+- **Live match preview**: while editing a rule, matching models and channels are previewed per channel in real time; exact matches win, regex rules are evaluated by ascending rule ID
+- **Standard table framework**: the rules list uses the standard DataTablePage framework (pagination / rows-per-page / totals) and the standard drawer layout
+
+### 8. Global Prompt Injection
+
+- **Global system prompt**: System Settings → Models & Routing → Global Model Configuration can inject one system prompt into every relayed request
+- **Three injection modes**: prepend / append / override the existing system prompt
+- **All protocols covered**: OpenAI, Claude, and Gemini requests; channel-level system prompts still apply on top
+- **AxonHub parity**: mirrors AxonHub's global prompt injection (prepend / append), configured entirely from the WebUI
+
+### 9. Other Improvements
 
 - **Channel test-model dropdown**: test model is now a real dropdown sourced from the channel's configured models (incl. "Models & Groups"), with adaptive width
 - **Form reset fix**: closing the create-channel drawer after a successful submission properly resets the form and advanced-settings panel state
-- **Version**: images embed a pinned version `v1.0.0-rc.23-patch1` (both the `X-New-Api-Version` response header and the frontend version page)
+- **Version**: images embed a pinned version `v1.0.0-rc.23-patch2` (both the `X-New-Api-Version` response header and the frontend version page)
 
 ## Quick Start
 
@@ -86,7 +100,7 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 | Purpose | Image |
 |---|---|
 | **Production** (auto-updated) | `ghcr.io/likhixang/betternew-api:latest` |
-| **Pinned release** (v1.0.0-rc.23-patch1) | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch1` |
+| **Pinned release** (v1.0.0-rc.23-patch2) | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch2` |
 | **Testing** (patch/test branch) | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash
