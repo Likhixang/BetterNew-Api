@@ -79,7 +79,10 @@ func InjectGlobalPromptOpenAI(request *dto.GeneralOpenAIRequest) {
 
 	switch action {
 	case globalPromptActionOverride:
-		request.Messages[index].Content = content
+		// Use SetStringContent (not direct assignment) so the parsedContent
+		// cache is invalidated — the message may have been parsed earlier in
+		// the pipeline (token estimation, channel-level injection).
+		request.Messages[index].SetStringContent(content)
 	case globalPromptActionAppend:
 		msg := &request.Messages[index]
 		if msg.IsStringContent() {
