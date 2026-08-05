@@ -36,6 +36,7 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
   Sheet,
@@ -325,12 +326,24 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
                     }
                     className='flex gap-4'
                   >
-                    <RadioGroupItem value='0' id='merge-match-exact'>
-                      {t('Exact')}
-                    </RadioGroupItem>
-                    <RadioGroupItem value='1' id='merge-match-regex'>
-                      {t('Regex')}
-                    </RadioGroupItem>
+                    <div className='flex items-center gap-2'>
+                      <RadioGroupItem value='0' id='merge-match-exact' />
+                      <Label
+                        htmlFor='merge-match-exact'
+                        className='cursor-pointer text-sm font-normal'
+                      >
+                        {t('Exact')}
+                      </Label>
+                    </div>
+                    <div className='flex items-center gap-2'>
+                      <RadioGroupItem value='1' id='merge-match-regex' />
+                      <Label
+                        htmlFor='merge-match-regex'
+                        className='cursor-pointer text-sm font-normal'
+                      >
+                        {t('Regex')}
+                      </Label>
+                    </div>
                   </RadioGroup>
                 </FormControl>
                 <FormMessage />
