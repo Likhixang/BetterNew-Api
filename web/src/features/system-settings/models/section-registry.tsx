@@ -36,6 +36,31 @@ function formatJsonForEditor(value: string, fallback: string) {
   }
 }
 
+function parseGlobalPromptInjection(value: string): {
+  enabled: boolean
+  action: string
+  content: string
+} {
+  const raw = (value ?? '').toString().trim()
+  if (!raw) {
+    return { enabled: false, action: 'prepend', content: '' }
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<{
+      enabled?: boolean
+      action?: string
+      content?: string
+    }>
+    return {
+      enabled: parsed.enabled ?? false,
+      action: parsed.action || 'prepend',
+      content: parsed.content ?? '',
+    }
+  } catch {
+    return { enabled: false, action: 'prepend', content: '' }
+  }
+}
+
 const MODELS_SECTIONS = [
   {
     id: 'global',
@@ -53,6 +78,9 @@ const MODELS_SECTIONS = [
             chat_completions_to_responses_policy: formatJsonForEditor(
               settings['global.chat_completions_to_responses_policy'],
               '{}'
+            ),
+            global_prompt_injection: parseGlobalPromptInjection(
+              settings['global.global_prompt_injection']
             ),
           },
           general_setting: {

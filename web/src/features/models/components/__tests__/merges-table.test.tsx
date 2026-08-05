@@ -42,7 +42,11 @@ const domGlobals = [
 ] as const
 
 for (const key of domGlobals) {
-  ;(globalThis as Record<string, unknown>)[key] = domWindow[key]
+  Object.defineProperty(globalThis, key, {
+    configurable: true,
+    writable: true,
+    value: domWindow[key],
+  })
 }
 
 const { QueryClient, QueryClientProvider } =

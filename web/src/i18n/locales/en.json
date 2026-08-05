@@ -5286,6 +5286,13 @@
     "{{count}} channels matched": "{{count}} channels matched",
     "Checking...": "Checking...",
     "{{count}} rules": "{{count}} rules",
-    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash)."
+    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).",
+    "Enable Global Prompt Injection": "Enable Global Prompt Injection",
+    "Prepend, append or override the system prompt on every relayed request, regardless of upstream protocol.": "Prepend, append or override the system prompt on every relayed request, regardless of upstream protocol.",
+    "Injection Mode": "Injection Mode",
+    "Prepend adds the prompt before the existing system content, append after it, override replaces it entirely.": "Prepend adds the prompt before the existing system content, append after it, override replaces it entirely.",
+    "Prompt Content": "Prompt Content",
+    "Enter the system prompt to inject into every request.": "Enter the system prompt to inject into every request.",
+    "Applied to OpenAI, Claude and Gemini protocol requests. Channel-level system prompts still apply on top.": "Applied to OpenAI, Claude and Gemini protocol requests. Channel-level system prompts still apply on top."
   }
 }

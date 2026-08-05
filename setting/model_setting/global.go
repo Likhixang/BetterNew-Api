@@ -32,10 +32,17 @@ func (p ChatCompletionsToResponsesPolicy) IsChannelEnabled(channelID int, channe
 	return false
 }
 
+type GlobalPromptInjection struct {
+	Enabled bool   `json:"enabled"`
+	Action  string `json:"action"`  // prepend | append | override
+	Content string `json:"content"`
+}
+
 type GlobalSettings struct {
 	PassThroughRequestEnabled        bool                             `json:"pass_through_request_enabled"`
 	ThinkingModelBlacklist           []string                         `json:"thinking_model_blacklist"`
 	ChatCompletionsToResponsesPolicy ChatCompletionsToResponsesPolicy `json:"chat_completions_to_responses_policy"`
+	GlobalPromptInjection            GlobalPromptInjection            `json:"global_prompt_injection"`
 }
 
 // 默认配置
@@ -48,6 +55,10 @@ var defaultOpenaiSettings = GlobalSettings{
 	ChatCompletionsToResponsesPolicy: ChatCompletionsToResponsesPolicy{
 		Enabled:     false,
 		AllChannels: true,
+	},
+	GlobalPromptInjection: GlobalPromptInjection{
+		Enabled: false,
+		Action:  "prepend",
 	},
 }
 
