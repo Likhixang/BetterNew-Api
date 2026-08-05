@@ -5280,6 +5280,12 @@
     "Failed to create model merge": "Failed to create model merge",
     "Failed to update model merge": "Failed to update model merge",
     "Failed to delete model merge": "Failed to delete model merge",
+    "Match Preview": "Match Preview",
+    "Live preview of which channels and models this rule matches.": "Live preview of which channels and models this rule matches.",
+    "Enter an alias to see matching channels and models.": "Enter an alias to see matching channels and models.",
+    "No channels match this rule.": "No channels match this rule.",
+    "{{count}} channels matched": "{{count}} channels matched",
+    "Checking...": "Checking...",
     "{{count}} rules": "{{count}} rules"
   }
 }

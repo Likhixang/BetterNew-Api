@@ -365,6 +365,14 @@ func GetAllChannels(startIdx int, num int, selectAll bool, idSort bool, sortOpti
 	return channels, err
 }
 
+// GetAllChannelsOmitKey returns every channel without the API key column.
+// Used by preview endpoints that need model lists but must never leak keys.
+func GetAllChannelsOmitKey() ([]*Channel, error) {
+	var channels []*Channel
+	err := DB.Omit("key").Find(&channels).Error
+	return channels, err
+}
+
 func GetChannelsByTag(tag string, idSort bool, selectAll bool, sortOptions ...ChannelSortOptions) ([]*Channel, error) {
 	var channels []*Channel
 	order := resolveChannelSortOptions(idSort, sortOptions)

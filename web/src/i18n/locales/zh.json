@@ -5280,6 +5280,12 @@
     "Failed to create model merge": "创建模型合并规则失败",
     "Failed to update model merge": "更新模型合并规则失败",
     "Failed to delete model merge": "删除模型合并规则失败",
+    "Match Preview": "匹配预览",
+    "Live preview of which channels and models this rule matches.": "实时预览此规则会命中哪些渠道和模型。",
+    "Enter an alias to see matching channels and models.": "输入别名以查看命中的渠道和模型。",
+    "No channels match this rule.": "暂无渠道命中此规则。",
+    "{{count}} channels matched": "共 {{count}} 个渠道命中",
+    "Checking...": "检查中...",
     "{{count}} rules": "共 {{count}} 条规则"
   }
 }

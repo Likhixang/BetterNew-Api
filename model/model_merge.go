@@ -20,6 +20,8 @@ package model
 
 import (
 	"errors"
+	"regexp"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 )
@@ -97,4 +99,66 @@ func GetModelMergeById(id int) (*ModelMerge, error) {
 	merge := &ModelMerge{}
 	err := DB.Where("id = ?", id).First(merge).Error
 	return merge, err
+}
+
+// ModelMergePreviewChannel is a channel plus the models that match a draft rule.
+type ModelMergePreviewChannel struct {
+	Id     int      `json:"id"`
+	Name   string   `json:"name"`
+	Type   int      `json:"type"`
+	Status int      `json:"status"`
+	Models []string `json:"models"`
+}
+
+// PreviewModelMergeMatches evaluates a draft rule (alias + match type) against
+// every channel's configured models and returns only the channels that have at
+// least one matching model. Exact rules compare trimmed names; regex rules use
+// Go regexp.MatchString. The returned channels never carry API keys.
+func PreviewModelMergeMatches(channels []*Channel, alias string, matchType int) ([]*ModelMergePreviewChannel, error) {
+	alias = strings.TrimSpace(alias)
+	if alias == "" {
+		return nil, errors.New("alias is required")
+	}
+
+	var pattern *regexp.Regexp
+	if matchType == ModelMergeMatchRegex {
+		var err error
+		pattern, err = regexp.Compile(alias)
+		if err != nil {
+			return nil, errors.New("invalid regex alias: " + err.Error())
+		}
+	}
+
+	result := make([]*ModelMergePreviewChannel, 0)
+	for _, ch := range channels {
+		if ch == nil {
+			continue
+		}
+		matched := make([]string, 0)
+		for _, m := range ch.GetModels() {
+			m = strings.TrimSpace(m)
+			if m == "" {
+				continue
+			}
+			hit := false
+			if pattern != nil {
+				hit = pattern.MatchString(m)
+			} else {
+				hit = m == alias
+			}
+			if hit {
+				matched = append(matched, m)
+			}
+		}
+		if len(matched) > 0 {
+			result = append(result, &ModelMergePreviewChannel{
+				Id:     ch.Id,
+				Name:   ch.Name,
+				Type:   ch.Type,
+				Status: ch.Status,
+				Models: matched,
+			})
+		}
+	}
+	return result, nil
 }
