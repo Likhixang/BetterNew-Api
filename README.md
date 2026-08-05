@@ -72,7 +72,6 @@
 
 - **Key 级模型重定向**：每个 API Key 可配置模型映射（如 `claude-opus-4-8 → deepseek-v4-pro`），请求到达后先按**原始请求模型**做白名单校验，再重定向为映射目标模型用于渠道选择、上游转发与计费
 - **可视化编辑**：令牌表单提供 Visual（表格行：原始模型 → 替换模型，下拉选择）与 JSON（1:1 编辑 + 格式化/复制）双视图，支持重复映射拦截
-- **对标 AxonHub**：语义与 AxonHub profiles 的 `modelMappings` 一致，适用于 key 级按需降级 / 平替场景
 
 ### 七、模型合并（Model Merge）
 
@@ -86,7 +85,6 @@
 - **全局 System Prompt**：系统设置 → 模型与路由 → 全局模型配置，可为所有转发的请求注入统一的系统提示词
 - **三种注入模式**：前置（prepend）/ 追加（append）/ 覆盖（override）现有系统提示词
 - **全协议覆盖**：OpenAI、Claude、Gemini 协议均生效；渠道级系统提示词仍可在其上叠加
-- **对标 AxonHub**：对应 AxonHub 的全局 prompt 注入能力（prepend / append），配置在 WebUI 完成
 
 ### 九、其他改进
 
