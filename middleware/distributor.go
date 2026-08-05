@@ -56,6 +56,12 @@ func Distribute() func(c *gin.Context) {
 			}
 		} else {
 			// Select a channel for the user
+			// Normalize the requested model name through global merge rules
+			// BEFORE token whitelist validation, so keys only need to list the
+			// canonical model (e.g. deepseek_ai/deepseek-v4-flash -> deepseek-v4-flash).
+			if modelRequest.Model != "" {
+				modelRequest.Model = model.MergeModelName(modelRequest.Model)
+			}
 			// check token model mapping
 			modelLimitEnable := common.GetContextKeyBool(c, constant.ContextKeyTokenModelLimitEnabled)
 			if modelLimitEnable {

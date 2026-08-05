@@ -304,7 +304,7 @@ export type SyncSource = 'official' | 'config'
 /**
  * Model tab type
  */
-export type ModelTabCategory = 'metadata' | 'deployments'
+export type ModelTabCategory = 'metadata' | 'merges' | 'deployments'
 
 /**
  * Deployment entity from API
