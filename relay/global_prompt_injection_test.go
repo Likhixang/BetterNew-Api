@@ -188,3 +188,45 @@ func TestInjectGlobalPromptGeminiNoSystem(t *testing.T) {
 		t.Fatalf("gemini system insert failed: %+v", req.SystemInstructions)
 	}
 }
+
+func TestInjectGlobalPromptOpenAIOverrideClearsParsedCache(t *testing.T) {
+	// Regression: direct Content assignment would leave the parsedContent
+	// cache stale when the system message was already parsed earlier in the
+	// pipeline (token estimation, channel-level injection).
+	setGlobalPrompt(true, "override", "OVERRIDDEN")
+	defer setGlobalPrompt(false, "prepend", "")
+
+	req := &dto.GeneralOpenAIRequest{
+		Messages: []dto.Message{
+			{
+				Role: "system",
+				Content: []any{
+					dto.MediaContent{Type: dto.ContentTypeText, Text: "original"},
+				},
+			},
+			{Role: "user", Content: "hi"},
+		},
+	}
+	// Simulate earlier pipeline work that populated the parse cache.
+	_ = req.Messages[0].ParseContent()
+
+	InjectGlobalPromptOpenAI(req)
+
+	parsed := req.Messages[0].ParseContent()
+	if len(parsed) != 1 || parsed[0].Text != "OVERRIDDEN" {
+		t.Fatalf("override after parse returned stale cache: %+v", parsed)
+	}
+	if !req.Messages[0].IsStringContent() || req.Messages[0].StringContent() != "OVERRIDDEN" {
+		t.Fatalf("content not overridden: %+v", req.Messages[0].Content)
+	}
+}
+
+func TestInjectGlobalPromptOpenAINilRequest(t *testing.T) {
+	setGlobalPrompt(true, "prepend", "GLOBAL")
+	defer setGlobalPrompt(false, "prepend", "")
+
+	// Must not panic.
+	InjectGlobalPromptOpenAI(nil)
+	InjectGlobalPromptClaude(nil)
+	InjectGlobalPromptGemini(nil)
+}
