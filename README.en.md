@@ -89,7 +89,6 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 
 - **Channel test-model dropdown**: test model is now a real dropdown sourced from the channel's configured models (incl. "Models & Groups"), with adaptive width
 - **Form reset fix**: closing the create-channel drawer after a successful submission properly resets the form and advanced-settings panel state
-- **Version**: images embed a pinned version `v1.0.0-rc.23-patch2` (both the `X-New-Api-Version` response header and the frontend version page)
 
 ## Quick Start
 
