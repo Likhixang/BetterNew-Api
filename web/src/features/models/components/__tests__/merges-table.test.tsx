@@ -210,4 +210,48 @@ describe('MergesTable', () => {
     editButton.click()
     assert.equal(editedId, 7)
   })
+
+  test('paginates 13 rules into 10 + 3 with page navigation', async () => {
+    const rules = Array.from({ length: 13 }, (_, index) => ({
+      id: index + 1,
+      target_model: `model-${index + 1}`,
+      alias: `alias-${index + 1}`,
+      match_type: 0,
+      status: 1,
+      created_time: 1,
+      updated_time: 1,
+    }))
+    installGetMock(rules)
+
+    const { host } = await renderTable()
+
+    // First page shows 10 rows
+    await waitForCondition(
+      () => host.textContent?.includes('alias-10') === true,
+      'first page should show up to 10 rules'
+    )
+    assert.ok(host.textContent?.includes('alias-1'))
+    assert.ok(host.textContent?.includes('alias-10'))
+    assert.ok(!host.textContent?.includes('alias-11'))
+
+    // Navigate to page 2
+    const pageButtons = [...host.querySelectorAll('a')].filter((link) =>
+      link.textContent?.trim()
+    )
+    const pageTwo = pageButtons.find((link) => link.textContent?.trim() === '2')
+    assert.ok(pageTwo, 'page 2 link should exist')
+    pageTwo.click()
+
+    await waitForCondition(
+      () => host.textContent?.includes('alias-11') === true,
+      'second page should show remaining rules'
+    )
+    assert.ok(host.textContent?.includes('alias-13'))
+    // alias-1 followed by a non-digit must not appear (alias-13 contains the
+    // substring alias-1, so use a boundary check)
+    assert.ok(
+      !/alias-1(?![0-9])/.test(host.textContent ?? ''),
+      'first page rule alias-1 should not appear on page 2'
+    )
+  })
 })

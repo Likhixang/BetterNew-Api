@@ -17,9 +17,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -37,6 +46,8 @@ import {
   type ModelMerge,
 } from '../lib/merge-actions'
 
+const PAGE_SIZE = 10
+
 type MergesTableProps = {
   onEdit: (merge: ModelMerge) => void
 }
@@ -44,11 +55,19 @@ type MergesTableProps = {
 export function MergesTable(props: MergesTableProps) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
+  const [page, setPage] = useState(1)
 
   const { data: merges = [], isLoading } = useQuery({
     queryKey: ['model-merges'],
     queryFn: listModelMerges,
   })
+
+  const totalPages = Math.max(1, Math.ceil(merges.length / PAGE_SIZE))
+  const currentPage = Math.min(page, totalPages)
+  const pageItems = merges.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  )
 
   const deleteMutation = useMutation({
     mutationFn: deleteModelMerge,
@@ -101,7 +120,7 @@ export function MergesTable(props: MergesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {merges.map((merge) => (
+          {pageItems.map((merge) => (
             <TableRow key={merge.id}>
               <TableCell className='font-mono text-xs'>
                 {merge.target_model}
@@ -149,6 +168,64 @@ export function MergesTable(props: MergesTableProps) {
           ))}
         </TableBody>
       </Table>
+
+      {totalPages > 1 && (
+        <div className='flex items-center justify-between border-t px-4 py-2'>
+          <p className='text-xs text-muted-foreground'>
+            {t('{{count}} rules', { count: merges.length })}
+          </p>
+          <Pagination className='justify-end'>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href='#'
+                  onClick={(event) => {
+                    event.preventDefault()
+                    if (currentPage > 1) {
+                      setPage(currentPage - 1)
+                    }
+                  }}
+                  className={
+                    currentPage <= 1 ? 'pointer-events-none opacity-50' : ''
+                  }
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                (pageNumber) => (
+                  <PaginationItem key={pageNumber}>
+                    <PaginationLink
+                      href='#'
+                      onClick={(event) => {
+                        event.preventDefault()
+                        setPage(pageNumber)
+                      }}
+                      isActive={pageNumber === currentPage}
+                    >
+                      {pageNumber}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              <PaginationItem>
+                <PaginationNext
+                  href='#'
+                  onClick={(event) => {
+                    event.preventDefault()
+                    if (currentPage < totalPages) {
+                      setPage(currentPage + 1)
+                    }
+                  }}
+                  className={
+                    currentPage >= totalPages
+                      ? 'pointer-events-none opacity-50'
+                      : ''
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   )
 }
