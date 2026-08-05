@@ -173,58 +173,56 @@ export function MergesTable(props: MergesTableProps) {
         <p className='text-xs text-muted-foreground'>
           {t('{{count}} rules', { count: merges.length })}
         </p>
-        {totalPages > 1 && (
-          <Pagination className='justify-end'>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  href='#'
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (currentPage > 1) {
-                      setPage(currentPage - 1)
-                    }
-                  }}
-                  className={
-                    currentPage <= 1 ? 'pointer-events-none opacity-50' : ''
+        <Pagination className='justify-end'>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href='#'
+                onClick={(event) => {
+                  event.preventDefault()
+                  if (currentPage > 1) {
+                    setPage(currentPage - 1)
                   }
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(
-                (pageNumber) => (
-                  <PaginationItem key={pageNumber}>
-                    <PaginationLink
-                      href='#'
-                      onClick={(event) => {
-                        event.preventDefault()
-                        setPage(pageNumber)
-                      }}
-                      isActive={pageNumber === currentPage}
-                    >
-                      {pageNumber}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              )}
-              <PaginationItem>
-                <PaginationNext
-                  href='#'
-                  onClick={(event) => {
-                    event.preventDefault()
-                    if (currentPage < totalPages) {
-                      setPage(currentPage + 1)
-                    }
-                  }}
-                  className={
-                    currentPage >= totalPages
-                      ? 'pointer-events-none opacity-50'
-                      : ''
+                }}
+                className={
+                  currentPage <= 1 ? 'pointer-events-none opacity-50' : ''
+                }
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+              (pageNumber) => (
+                <PaginationItem key={pageNumber}>
+                  <PaginationLink
+                    href='#'
+                    onClick={(event) => {
+                      event.preventDefault()
+                      setPage(pageNumber)
+                    }}
+                    isActive={pageNumber === currentPage}
+                  >
+                    {pageNumber}
+                  </PaginationLink>
+                </PaginationItem>
+              )
+            )}
+            <PaginationItem>
+              <PaginationNext
+                href='#'
+                onClick={(event) => {
+                  event.preventDefault()
+                  if (currentPage < totalPages) {
+                    setPage(currentPage + 1)
                   }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+                }}
+                className={
+                  currentPage >= totalPages
+                    ? 'pointer-events-none opacity-50'
+                    : ''
+                }
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
     </div>
   )

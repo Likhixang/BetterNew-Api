@@ -174,7 +174,7 @@ describe('MergesTable', () => {
     assert.ok(host.textContent?.includes('No model merge rules yet.'))
   })
 
-  test('shows total rule count without pagination controls on a single page', async () => {
+  test('shows pagination bar with disabled controls on a single page', async () => {
     const rules = Array.from({ length: 9 }, (_, index) => ({
       id: index + 1,
       target_model: `model-${index + 1}`,
@@ -192,11 +192,26 @@ describe('MergesTable', () => {
       () => host.textContent?.includes('9 rules') === true,
       'single page should still show the total rule count'
     )
-    // No page-number links when everything fits on one page
+    // Pagination bar is always rendered; on a single page only page 1
+    // appears, and Previous/Next are disabled (pointer-events-none).
     const pageLinks = [...host.querySelectorAll('a')].filter((link) =>
       /^\d+$/.test(link.textContent?.trim() ?? '')
     )
-    assert.equal(pageLinks.length, 0, 'no page number links on single page')
+    assert.deepEqual(
+      pageLinks.map((link) => link.textContent?.trim()),
+      ['1'],
+      'only page 1 link on a single page'
+    )
+    const disabledLinks = [...host.querySelectorAll('a')].filter((link) =>
+      link.classList.contains('pointer-events-none')
+    )
+    assert.equal(
+      disabledLinks.length,
+      2,
+      `Previous and Next should be disabled on a single page, got: ${disabledLinks
+        .map((link) => `${link.textContent?.trim()}|${link.getAttribute('aria-label')}`)
+        .join(' , ')}`
+    )
     assert.ok(host.textContent?.includes('alias-9'))
   })
 
