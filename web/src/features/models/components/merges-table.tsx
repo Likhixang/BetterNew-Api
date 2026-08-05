@@ -87,7 +87,6 @@ export function MergesTable(props: MergesTableProps) {
       emptyTitle={t('No model merge rules yet.')}
       emptyDescription={t('Click "Create Model Merge" to add one.')}
       toolbarProps={null}
-      fixedHeight={false}
     />
   )
 }

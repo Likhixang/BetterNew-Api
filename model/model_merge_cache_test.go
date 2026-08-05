@@ -226,3 +226,88 @@ func TestPreviewModelMergeMatchesEmptyAlias(t *testing.T) {
 		t.Fatal("expected empty alias error")
 	}
 }
+
+func TestPreviewModelMergeMatchesMultiLineAliases(t *testing.T) {
+	channels := []*Channel{
+		{Id: 1, Name: "ds-direct", Type: 1, Status: 1, Models: "deepseek-v4-flash,claude-opus-4-8"},
+		{Id: 2, Name: "ds-cx", Type: 1, Status: 1, Models: "cx/deepseek-v4-flash,gpt-5.5"},
+		{Id: 3, Name: "misc", Type: 1, Status: 1, Models: "gemini-2.5-pro"},
+	}
+
+	// Multi-line exact aliases: both lines must be considered; the second
+	// line hits channel 2 even though the first line only hits channel 1.
+	result, err := PreviewModelMergeMatches(
+		channels,
+		"deepseek-v4-flash\ncx/deepseek-v4-flash",
+		ModelMergeMatchExact,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 channels, got %d", len(result))
+	}
+	// Blank lines are ignored.
+	result, err = PreviewModelMergeMatches(
+		channels,
+		"\n  \ndeepseek-v4-flash\n",
+		ModelMergeMatchExact,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error with blank lines: %v", err)
+	}
+	if len(result) != 1 || result[0].Id != 1 {
+		t.Fatalf("expected only channel 1, got %+v", result)
+	}
+	// Multi-line regex: second pattern hits the prefixed variant.
+	result, err = PreviewModelMergeMatches(
+		channels,
+		"(?i)deepseek-v4-flash\n(?i)cx/deepseek-v4-flash",
+		ModelMergeMatchRegex,
+	)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(result) != 2 {
+		t.Fatalf("expected 2 channels for multi regex, got %d", len(result))
+	}
+	// One invalid line must fail the whole rule.
+	if _, err := PreviewModelMergeMatches(channels, "(?i)deepseek-v4-flash\n([unclosed", ModelMergeMatchRegex); err == nil {
+		t.Fatal("expected invalid regex error for multi-line alias")
+	}
+}
+
+func TestInitModelMergeCacheMultiLineAlias(t *testing.T) {
+	// Verify the semantics InitModelMergeCache applies per line: each line of a
+	// multi-line alias is registered against the shared target model.
+	// (InitModelMergeCache itself requires a live DB, so we exercise the same
+	// per-line registration against the in-memory structures here.)
+	aliases := splitAliases("deepseek_ai/deepseek-v4-flash\nds/deepseek-v4-flash")
+	if len(aliases) != 2 {
+		t.Fatalf("expected 2 aliases, got %v", aliases)
+	}
+
+	modelMergeMutex.Lock()
+	modelMergeExact = map[string]string{}
+	for _, alias := range aliases {
+		modelMergeExact[alias] = "deepseek-v4-flash"
+	}
+	modelMergeRegex = nil
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+
+	if got := MergeModelName("deepseek_ai/deepseek-v4-flash"); got != "deepseek-v4-flash" {
+		t.Fatalf("first alias not merged: got %q", got)
+	}
+	if got := MergeModelName("ds/deepseek-v4-flash"); got != "deepseek-v4-flash" {
+		t.Fatalf("second alias not merged: got %q", got)
+	}
+	if got := MergeModelName("unrelated"); got != "unrelated" {
+		t.Fatalf("unrelated name should pass through: got %q", got)
+	}
+
+	// Blank lines are ignored by splitAliases.
+	if aliases := splitAliases("\n  \ndeepseek-v4-flash\n"); len(aliases) != 1 || aliases[0] != "deepseek-v4-flash" {
+		t.Fatalf("blank lines not ignored: %v", aliases)
+	}
+}

@@ -5267,7 +5267,6 @@
     "Target Model *": "Target Model *",
     "The canonical model name used for whitelist, routing and billing.": "The canonical model name used for whitelist, routing and billing.",
     "Alias *": "Alias *",
-    "Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).",
     "Disabled rules are kept but not applied.": "Disabled rules are kept but not applied.",
     "Target Model": "Target Model",
     "Alias": "Alias",
@@ -5286,6 +5285,7 @@
     "No channels match this rule.": "No channels match this rule.",
     "{{count}} channels matched": "{{count}} channels matched",
     "Checking...": "Checking...",
-    "{{count}} rules": "{{count}} rules"
+    "{{count}} rules": "{{count}} rules",
+    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash)."
   }
 }

@@ -110,22 +110,31 @@ type ModelMergePreviewChannel struct {
 	Models []string `json:"models"`
 }
 
-// PreviewModelMergeMatches evaluates a draft rule (alias + match type) against
-// every channel's configured models and returns only the channels that have at
-// least one matching model. Exact rules compare trimmed names; regex rules use
-// Go regexp.MatchString. The returned channels never carry API keys.
+// PreviewModelMergeMatches evaluates a draft rule (one or more aliases, one per
+// line, with a match type) against every channel's configured models and
+// returns only the channels that have at least one matching model. Exact rules
+// compare trimmed names; regex rules use Go regexp.MatchString. All aliases
+// share the same match type (per-rule). The returned channels never carry API
+// keys.
 func PreviewModelMergeMatches(channels []*Channel, alias string, matchType int) ([]*ModelMergePreviewChannel, error) {
-	alias = strings.TrimSpace(alias)
-	if alias == "" {
+	aliases := splitAliases(alias)
+	if len(aliases) == 0 {
 		return nil, errors.New("alias is required")
 	}
 
-	var pattern *regexp.Regexp
-	if matchType == ModelMergeMatchRegex {
-		var err error
-		pattern, err = regexp.Compile(alias)
-		if err != nil {
-			return nil, errors.New("invalid regex alias: " + err.Error())
+	// Precompile regex rules; exact aliases stay as plain strings.
+	type exactRule struct{ name string }
+	exactRules := make([]exactRule, 0, len(aliases))
+	regexRules := make([]*regexp.Regexp, 0, len(aliases))
+	for _, a := range aliases {
+		if matchType == ModelMergeMatchRegex {
+			pattern, err := regexp.Compile(a)
+			if err != nil {
+				return nil, errors.New("invalid regex alias: " + err.Error())
+			}
+			regexRules = append(regexRules, pattern)
+		} else {
+			exactRules = append(exactRules, exactRule{name: a})
 		}
 	}
 
@@ -141,10 +150,21 @@ func PreviewModelMergeMatches(channels []*Channel, alias string, matchType int) 
 				continue
 			}
 			hit := false
-			if pattern != nil {
-				hit = pattern.MatchString(m)
-			} else {
-				hit = m == alias
+			if len(regexRules) > 0 {
+				for _, pattern := range regexRules {
+					if pattern.MatchString(m) {
+						hit = true
+						break
+					}
+				}
+			}
+			if !hit {
+				for _, rule := range exactRules {
+					if m == rule.name {
+						hit = true
+						break
+					}
+				}
 			}
 			if hit {
 				matched = append(matched, m)
@@ -161,4 +181,19 @@ func PreviewModelMergeMatches(channels []*Channel, alias string, matchType int) 
 		}
 	}
 	return result, nil
+}
+
+// splitAliases splits a multi-line alias field into individual non-empty
+// trimmed aliases. One alias per line.
+func splitAliases(alias string) []string {
+	lines := strings.Split(alias, "\n")
+	aliases := make([]string, 0, len(lines))
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		aliases = append(aliases, line)
+	}
+	return aliases
 }
