@@ -719,6 +719,32 @@ export function ApiKeysMutateDrawer({
 
                     <FormField
                       control={form.control}
+                      name='model_mapping'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Model Mapping')}</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              className='min-h-20 resize-none font-mono text-xs'
+                              placeholder={t(
+                                '{"claude-opus-4-8": "deepseek-v4-pro"}'
+                              )}
+                              rows={3}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Redirect a requested model to another model for this key. JSON object, empty for no mapping.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
                       name='allow_ips'
                       render={({ field }) => (
                         <FormItem>

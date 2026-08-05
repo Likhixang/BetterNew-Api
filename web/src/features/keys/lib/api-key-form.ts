@@ -39,6 +39,7 @@ export function getApiKeyFormSchema(t: TFunction, maxAutoGroups = 5) {
       expired_time: z.date().optional(),
       unlimited_quota: z.boolean(),
       model_limits: z.array(z.string()),
+      model_mapping: z.string().optional(),
       allow_ips: z.string().optional(),
       group: z.string().optional(),
       auto_groups_mode: z.enum(['inherit', 'custom']),
@@ -109,6 +110,7 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   expired_time: undefined,
   unlimited_quota: true,
   model_limits: [],
+  model_mapping: '',
   allow_ips: '',
   group: DEFAULT_GROUP,
   auto_groups_mode: 'inherit',
@@ -150,6 +152,7 @@ export function transformFormDataToPayload(
     unlimited_quota: data.unlimited_quota,
     model_limits_enabled: data.model_limits.length > 0,
     model_limits: data.model_limits.join(','),
+    model_mapping: data.model_mapping || '',
     allow_ips: data.allow_ips || '',
     group: data.group || '',
     auto_groups:
@@ -188,6 +191,7 @@ export function transformApiKeyToFormDefaults(
     model_limits: apiKey.model_limits
       ? apiKey.model_limits.split(',').filter(Boolean)
       : [],
+    model_mapping: apiKey.model_mapping || '',
     allow_ips: apiKey.allow_ips || '',
     group: apiKey.group || DEFAULT_GROUP,
     auto_groups_mode: autoGroupsMode,

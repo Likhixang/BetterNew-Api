@@ -24,6 +24,7 @@ type Token struct {
 	UnlimitedQuota     bool           `json:"unlimited_quota"`
 	ModelLimitsEnabled bool           `json:"model_limits_enabled"`
 	ModelLimits        string         `json:"model_limits" gorm:"type:text"`
+	ModelMapping       *string        `json:"model_mapping" gorm:"type:text"`
 	AllowIps           *string        `json:"allow_ips" gorm:"default:''"`
 	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
 	Group              string         `json:"group" gorm:"default:''"`
@@ -317,7 +318,7 @@ func (token *Token) Insert() error {
 // Update Make sure your token's fields is completed, because this will update non-zero values
 func (token *Token) Update() (err error) {
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry", "auto_groups").Updates(token).Error
+		"model_limits_enabled", "model_limits", "model_mapping", "allow_ips", "group", "cross_group_retry", "auto_groups").Updates(token).Error
 	if shouldUpdateRedis(true, err) {
 		if cacheErr := cacheSetToken(*token); cacheErr != nil {
 			common.SysLog("failed to update token cache: " + cacheErr.Error())
@@ -377,6 +378,14 @@ func (token *Token) GetModelLimitsMap() map[string]bool {
 		limitsMap[limit] = true
 	}
 	return limitsMap
+}
+
+// GetModelMapping returns the raw JSON model mapping string, nil-safe.
+func (token *Token) GetModelMapping() string {
+	if token.ModelMapping == nil {
+		return ""
+	}
+	return *token.ModelMapping
 }
 
 func DisableModelLimits(tokenId int) error {

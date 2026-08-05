@@ -77,6 +77,18 @@ func Distribute() func(c *gin.Context) {
 				}
 			}
 
+			// Apply token-level model mapping (key-level model redirect) before channel selection.
+			// The model limit check above runs against the ORIGINAL requested model; the mapped
+			// model is then used for channel selection, upstream relay and billing.
+			if tokenMapping := c.GetString("token_model_mapping"); tokenMapping != "" {
+				tokenMap := make(map[string]string)
+				if err := common.UnmarshalJsonStr(tokenMapping, &tokenMap); err == nil {
+					if mapped, ok := tokenMap[modelRequest.Model]; ok && mapped != "" {
+						modelRequest.Model = mapped
+					}
+				}
+			}
+
 			if shouldSelectChannel {
 				if modelRequest.Model == "" {
 					abortWithOpenAiMessage(c, http.StatusBadRequest, i18n.T(c, i18n.MsgDistributorModelNameRequired))
