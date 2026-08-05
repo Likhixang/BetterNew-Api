@@ -71,7 +71,6 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 
 - **Per-key model redirect**: every API key can define model mappings (e.g. `claude-opus-4-8 → deepseek-v4-pro`). Requests are first checked against the model whitelist using the **original requested model**, then redirected to the mapped model for channel selection, upstream relay, and billing
 - **Visual editor**: the key form ships a dual-view editor — Visual (table rows: original → replacement, with model dropdowns) and JSON (1:1 editing with format/copy), plus duplicate-source detection
-- **AxonHub parity**: semantics match AxonHub profiles' `modelMappings`, suited for per-key fallback / substitution scenarios
 
 ### 7. Model Merge
 
@@ -85,7 +84,6 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Global system prompt**: System Settings → Models & Routing → Global Model Configuration can inject one system prompt into every relayed request
 - **Three injection modes**: prepend / append / override the existing system prompt
 - **All protocols covered**: OpenAI, Claude, and Gemini requests; channel-level system prompts still apply on top
-- **AxonHub parity**: mirrors AxonHub's global prompt injection (prepend / append), configured entirely from the WebUI
 
 ### 9. Other Improvements
 
