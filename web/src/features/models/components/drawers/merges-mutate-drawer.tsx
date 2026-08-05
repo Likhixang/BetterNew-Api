@@ -38,6 +38,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Sheet,
   SheetContent,
@@ -49,6 +50,8 @@ import {
 import { Switch } from '@/components/ui/switch'
 import {
   sideDrawerContentClassName,
+  sideDrawerFooterClassName,
+  sideDrawerFormClassName,
   sideDrawerHeaderClassName,
 } from '@/components/drawer-layout'
 import { useDebounce } from '@/hooks/use-debounce'
@@ -237,7 +240,11 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
     <Sheet open={props.open} onOpenChange={props.onOpenChange}>
       <SheetContent className={sideDrawerContentClassName('sm:max-w-2xl')}>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
+          <form
+            id='model-merge-form'
+            onSubmit={form.handleSubmit(onSubmit)}
+            className={sideDrawerFormClassName('gap-5')}
+          >
             <SheetHeader className={sideDrawerHeaderClassName()}>
               <SheetTitle>
                 {props.editing ? t('Edit Model Merge') : t('Create Model Merge')}
@@ -277,14 +284,18 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
               <FormItem>
                 <FormLabel>{t('Alias *')}</FormLabel>
                 <FormControl>
-                  <Input
+                  <Textarea
                     {...field}
-                    placeholder='deepseek_ai/deepseek-v4-flash'
+                    className='min-h-24 resize-none font-mono text-xs'
+                    placeholder={
+                      'deepseek_ai/deepseek-v4-flash\n(?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash'
+                    }
+                    rows={3}
                   />
                 </FormControl>
                 <FormDescription>
                   {t(
-                    'Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).'
+                    'One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).'
                   )}
                 </FormDescription>
                 <FormMessage />
@@ -374,22 +385,29 @@ export function MergesMutateDrawer(props: MergesMutateDrawerProps) {
             )}
           />
 
-          <SheetFooter>
-            <Button
-              type='button'
-              variant='outline'
-              onClick={() => props.onOpenChange(false)}
-            >
-              {t('Close')}
-            </Button>
-            <Button type='submit' disabled={isSubmitting}>
-              {isSubmitting ? t('Saving...') : t('Save changes')}
-            </Button>
-          </SheetFooter>
-        </form>
-      </Form>
+          </form>
+        </Form>
 
-      {props.targetModelOptions && props.targetModelOptions.length > 0 && (
+        <SheetFooter className={sideDrawerFooterClassName()}>
+          <Button
+            type='button'
+            variant='outline'
+            onClick={() => props.onOpenChange(false)}
+            className='w-full sm:w-auto'
+          >
+            {t('Close')}
+          </Button>
+          <Button
+            type='submit'
+            form='model-merge-form'
+            disabled={isSubmitting}
+            className='w-full sm:w-auto'
+          >
+            {isSubmitting ? t('Saving...') : t('Save changes')}
+          </Button>
+        </SheetFooter>
+
+        {props.targetModelOptions && props.targetModelOptions.length > 0 && (
         <datalist id='merge-target-models'>
           {props.targetModelOptions.map((modelName) => (
             <option key={modelName} value={modelName} />

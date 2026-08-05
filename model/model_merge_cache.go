@@ -65,24 +65,27 @@ func InitModelMergeCache() error {
 		if m.Status != ModelMergeStatusEnabled {
 			continue
 		}
-		alias := strings.TrimSpace(m.Alias)
 		target := strings.TrimSpace(m.TargetModel)
-		if alias == "" || target == "" {
+		if target == "" {
 			continue
 		}
-		if m.MatchType == ModelMergeMatchRegex {
-			pattern, err := regexp.Compile(alias)
-			if err != nil {
-				common.SysLog("model merge: invalid regex alias " + alias + ": " + err.Error())
-				continue
+		// A rule may carry multiple aliases, one per line; each alias is
+		// registered independently against the shared target model.
+		for _, alias := range splitAliases(m.Alias) {
+			if m.MatchType == ModelMergeMatchRegex {
+				pattern, err := regexp.Compile(alias)
+				if err != nil {
+					common.SysLog("model merge: invalid regex alias " + alias + ": " + err.Error())
+					continue
+				}
+				newRegex = append(newRegex, modelMergeRegexRule{
+					priority: m.Id,
+					pattern:  pattern,
+					target:   target,
+				})
+			} else {
+				newExact[alias] = target
 			}
-			newRegex = append(newRegex, modelMergeRegexRule{
-				priority: m.Id,
-				pattern:  pattern,
-				target:   target,
-			})
-		} else {
-			newExact[alias] = target
 		}
 	}
 

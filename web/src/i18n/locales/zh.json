@@ -5267,7 +5267,6 @@
     "Target Model *": "目标模型 *",
     "The canonical model name used for whitelist, routing and billing.": "用于白名单、路由和计费的规范模型名。",
     "Alias *": "别名 *",
-    "Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "精确模型名或 Go 正则表达式（例如 (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash）。",
     "Disabled rules are kept but not applied.": "禁用的规则会保留但不会生效。",
     "Target Model": "目标模型",
     "Alias": "别名",
@@ -5286,6 +5285,7 @@
     "No channels match this rule.": "暂无渠道命中此规则。",
     "{{count}} channels matched": "共 {{count}} 个渠道命中",
     "Checking...": "检查中...",
-    "{{count}} rules": "共 {{count}} 条规则"
+    "{{count}} rules": "共 {{count}} 条规则",
+    "One alias per line. Exact model name or Go regex pattern (e.g. (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash).": "每行一个别名。精确模型名或 Go 正则（如 (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash）。"
   }
 }
