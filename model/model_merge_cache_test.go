@@ -1,0 +1,140 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+package model
+
+import (
+	"regexp"
+	"testing"
+)
+
+func TestMergeModelNameExact(t *testing.T) {
+	modelMergeMutex.Lock()
+	modelMergeExact = map[string]string{"deepseek_ai/deepseek-v4-flash": "deepseek-v4-flash"}
+	modelMergeRegex = nil
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"exact alias maps to canonical", "deepseek_ai/deepseek-v4-flash", "deepseek-v4-flash"},
+		{"canonical name passes through", "deepseek-v4-flash", "deepseek-v4-flash"},
+		{"unrelated model unchanged", "claude-opus-4-8", "claude-opus-4-8"},
+		{"empty input unchanged", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := MergeModelName(tt.input); got != tt.expected {
+				t.Fatalf("MergeModelName(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeModelNameRegex(t *testing.T) {
+	// Simulate what InitModelMergeCache builds for the AxonHub-style rule:
+	// (?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash(?:-[a-z0-9]+)?
+	pattern, err := regexp.Compile(`(?i)(?:deepseek(?:-ai)?/)?deepseek-v4-flash(?:-[a-z0-9]+)?`)
+	if err != nil {
+		t.Fatalf("compile pattern: %v", err)
+	}
+	modelMergeMutex.Lock()
+	modelMergeExact = map[string]string{}
+	modelMergeRegex = []modelMergeRegexRule{
+		{priority: 1, pattern: pattern, target: "deepseek-v4-flash"},
+	}
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"bare name", "deepseek-v4-flash", "deepseek-v4-flash"},
+		{"deepseek prefix", "deepseek/deepseek-v4-flash", "deepseek-v4-flash"},
+		{"deepseek-ai prefix", "deepseek-ai/deepseek-v4-flash", "deepseek-v4-flash"},
+		{"variant suffix", "deepseek-ai/deepseek-v4-flash-lite", "deepseek-v4-flash"},
+		{"case insensitive", "DeepSeek-ai/DeepSeek-v4-Flash", "deepseek-v4-flash"},
+		{"no match unchanged", "deepseek-v4-pro", "deepseek-v4-pro"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := MergeModelName(tt.input); got != tt.expected {
+				t.Fatalf("MergeModelName(%q) = %q, want %q", tt.input, got, tt.expected)
+			}
+		})
+	}
+}
+
+func TestMergeModelNameExactWinsOverRegex(t *testing.T) {
+	regexPattern, err := regexp.Compile(`deepseek.*`)
+	if err != nil {
+		t.Fatalf("compile pattern: %v", err)
+	}
+	modelMergeMutex.Lock()
+	// Exact alias for a name that would also match the regex
+	modelMergeExact = map[string]string{"deepseek-v4-flash": "deepseek-v4-flash"}
+	modelMergeRegex = []modelMergeRegexRule{
+		{priority: 1, pattern: regexPattern, target: "deepseek-canonical"},
+	}
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+
+	// "deepseek-v4-flash" hits the exact map first
+	if got := MergeModelName("deepseek-v4-flash"); got != "deepseek-v4-flash" {
+		t.Fatalf("exact should win, got %q", got)
+	}
+	// "deepseek-anything-else" falls through to regex
+	if got := MergeModelName("deepseek-x1"); got != "deepseek-canonical" {
+		t.Fatalf("regex fallback should hit, got %q", got)
+	}
+}
+
+func TestMergeModelNameSingleHop(t *testing.T) {
+	// A->B, B->C rules must NOT chain: A goes to B, not C.
+	modelMergeMutex.Lock()
+	modelMergeExact = map[string]string{
+		"model-a": "model-b",
+		"model-b": "model-c",
+	}
+	modelMergeRegex = nil
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+
+	if got := MergeModelName("model-a"); got != "model-b" {
+		t.Fatalf("single-hop expected model-b, got %q", got)
+	}
+}
+
+func TestMergeModelNameNotReady(t *testing.T) {
+	modelMergeMutex.Lock()
+	modelMergeReady = false
+	modelMergeMutex.Unlock()
+
+	if got := MergeModelName("deepseek_ai/deepseek-v4-flash"); got != "deepseek_ai/deepseek-v4-flash" {
+		t.Fatalf("cache not ready should pass through, got %q", got)
+	}
+
+	modelMergeMutex.Lock()
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+}

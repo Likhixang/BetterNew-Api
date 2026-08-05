@@ -324,6 +324,11 @@ func InitResources() error {
 	}
 	model.InitOptionMap()
 
+	// Initialize model merge cache (inbound model-name normalization rules)
+	if err := model.InitModelMergeCache(); err != nil {
+		common.SysError("failed to initialize model merge cache: " + err.Error())
+	}
+
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()
 

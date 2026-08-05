@@ -30,12 +30,14 @@ import { listDeployments } from './api'
 import { DeploymentAccessGuard } from './components/deployment-access-guard'
 import { DeploymentsTable } from './components/deployments-table'
 import { CreateDeploymentDrawer } from './components/dialogs/create-deployment-drawer'
+import { MergesMutateDrawer } from './components/drawers/merges-mutate-drawer'
+import { MergesTable } from './components/merges-table'
 import { ModelsDialogs } from './components/models-dialogs'
 import { ModelsPrimaryButtons } from './components/models-primary-buttons'
 import { ModelsProvider, useModels } from './components/models-provider'
 import { ModelsTable } from './components/models-table'
 import { useModelDeploymentSettings } from './hooks/use-model-deployment-settings'
-import { deploymentsQueryKeys } from './lib'
+import { deploymentsQueryKeys, type ModelMerge } from './lib'
 import {
   type ModelsSectionId,
   MODELS_DEFAULT_SECTION,
@@ -47,6 +49,9 @@ const route = getRouteApi('/_authenticated/models/$section')
 const SECTION_META: Record<ModelsSectionId, { titleKey: string }> = {
   metadata: {
     titleKey: 'Metadata',
+  },
+  merges: {
+    titleKey: 'Model Merges',
   },
   deployments: {
     titleKey: 'Deployments',
@@ -63,6 +68,9 @@ function ModelsContent() {
 
   // Deployment create dialog state
   const [createDeploymentOpen, setCreateDeploymentOpen] = useState(false)
+  // Model merge drawer state
+  const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false)
+  const [editingMerge, setEditingMerge] = useState<ModelMerge | null>(null)
 
   // keep context state in sync (for components that rely on it)
   useEffect(() => {
@@ -83,19 +91,55 @@ function ModelsContent() {
 
   const meta = SECTION_META[activeSection] ?? SECTION_META.metadata
 
+  function renderActions() {
+    if (activeSection === 'metadata') {
+      return <ModelsPrimaryButtons />
+    }
+    if (activeSection === 'merges') {
+      return (
+        <Button
+          onClick={() => {
+            setEditingMerge(null)
+            setMergeDrawerOpen(true)
+          }}
+          size='sm'
+        >
+          <Plus className='h-4 w-4' />
+          {t('Create Model Merge')}
+        </Button>
+      )
+    }
+    return (
+      <Button onClick={() => setCreateDeploymentOpen(true)} size='sm'>
+        <Plus className='h-4 w-4' />
+        {t('Create deployment')}
+      </Button>
+    )
+  }
+
+  function renderContent() {
+    if (activeSection === 'metadata') {
+      return <ModelsTable />
+    }
+    if (activeSection === 'merges') {
+      return (
+        <MergesTable
+          onEdit={(merge) => {
+            setEditingMerge(merge)
+            setMergeDrawerOpen(true)
+          }}
+        />
+      )
+    }
+    return <DeploymentsSection />
+  }
+
   return (
     <>
       <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>{t(meta.titleKey)}</SectionPageLayout.Title>
         <SectionPageLayout.Actions>
-          {activeSection === 'metadata' ? (
-            <ModelsPrimaryButtons />
-          ) : (
-            <Button onClick={() => setCreateDeploymentOpen(true)} size='sm'>
-              <Plus className='h-4 w-4' />
-              {t('Create deployment')}
-            </Button>
-          )}
+          {renderActions()}
         </SectionPageLayout.Actions>
         <SectionPageLayout.Content>
           <div className='flex h-full min-h-0 flex-col gap-4'>
@@ -108,18 +152,17 @@ function ModelsContent() {
                 ))}
               </TabsList>
             </Tabs>
-            <div className='min-h-0 flex-1'>
-              {activeSection === 'metadata' ? (
-                <ModelsTable />
-              ) : (
-                <DeploymentsSection />
-              )}
-            </div>
+            <div className='min-h-0 flex-1'>{renderContent()}</div>
           </div>
         </SectionPageLayout.Content>
       </SectionPageLayout>
 
       <ModelsDialogs />
+      <MergesMutateDrawer
+        open={mergeDrawerOpen}
+        onOpenChange={setMergeDrawerOpen}
+        editing={editingMerge}
+      />
       <CreateDeploymentDrawer
         open={createDeploymentOpen}
         onOpenChange={setCreateDeploymentOpen}

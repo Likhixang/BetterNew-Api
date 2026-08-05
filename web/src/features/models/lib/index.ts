@@ -28,3 +28,6 @@ export * from './model-form'
 // Actions
 export * from './model-actions'
 export * from './vendor-actions'
+
+// Model merges (inbound model-name normalization rules)
+export * from './merge-actions'
