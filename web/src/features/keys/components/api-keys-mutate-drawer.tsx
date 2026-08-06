@@ -168,7 +168,7 @@ export function ApiKeysMutateDrawer({
   const channelOptions = useMemo(
     () =>
       (channelsData?.data?.items || []).map((channel) => ({
-        label: `${channel.name} (#${channel.id})`,
+        label: channel.name,
         value: String(channel.id),
       })),
     [channelsData]

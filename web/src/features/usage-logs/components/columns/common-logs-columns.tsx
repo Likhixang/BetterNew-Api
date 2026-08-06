@@ -317,6 +317,21 @@ export function useCommonLogsColumns(isAdmin: boolean): ColumnDef<UsageLog>[] {
       enableHiding: false,
       size: 180,
     },
+    {
+      accessorKey: 'ip',
+      header: t('IP'),
+      cell: ({ row }) => {
+        const ip = row.getValue('ip') as string
+        if (!ip) return <span className='text-muted-foreground text-xs'>-</span>
+        return (
+          <span className='truncate font-mono text-xs tabular-nums'>
+            {ip}
+          </span>
+        )
+      },
+      enableSorting: false,
+      size: 140,
+    },
   ]
 
   if (isAdmin) {

@@ -38,6 +38,7 @@ export function useMergesColumns(
     {
       accessorKey: 'target_model',
       header: () => t('Target Model'),
+      meta: { label: t('Target Model') },
       cell: ({ row }) => (
         <span className='font-mono text-xs'>{row.original.target_model}</span>
       ),
@@ -46,6 +47,7 @@ export function useMergesColumns(
     {
       accessorKey: 'alias',
       header: () => t('Alias'),
+      meta: { label: t('Alias') },
       cell: ({ row }) => (
         <span className='block max-w-xs truncate font-mono text-xs'>
           {row.original.alias}
@@ -56,6 +58,7 @@ export function useMergesColumns(
     {
       accessorKey: 'match_type',
       header: () => t('Match Type'),
+      meta: { label: t('Match Type') },
       cell: ({ row }) =>
         row.original.match_type === 1 ? (
           <Badge variant='outline'>{t('Regex')}</Badge>
@@ -68,6 +71,7 @@ export function useMergesColumns(
     {
       accessorKey: 'status',
       header: () => t('Status'),
+      meta: { label: t('Status') },
       cell: ({ row }) =>
         row.original.status === 1 ? (
           <Badge className='bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'>
