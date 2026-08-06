@@ -500,6 +500,9 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 	} else {
 		c.Set("token_model_limit_enabled", false)
 	}
+	if channelLimits := token.GetChannelLimits(); len(channelLimits) > 0 {
+		c.Set("token_channel_limit", channelLimits)
+	}
 	if token.GetModelMapping() != "" && token.GetModelMapping() != "{}" {
 		c.Set("token_model_mapping", token.GetModelMapping())
 	}

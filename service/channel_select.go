@@ -19,6 +19,35 @@ type RetryParam struct {
 	resetNextTry bool
 }
 
+// GetTokenChannelLimits returns the token-level channel whitelist from the
+// request context. A nil result means no whitelist (all group channels allowed).
+func GetTokenChannelLimits(c *gin.Context) []int {
+	if c == nil {
+		return nil
+	}
+	if v, ok := c.Get("token_channel_limit"); ok {
+		if ids, ok := v.([]int); ok {
+			return ids
+		}
+	}
+	return nil
+}
+
+// ChannelAllowedByToken reports whether the channel is permitted by the
+// token-level channel whitelist. An empty whitelist allows everything.
+func ChannelAllowedByToken(c *gin.Context, channelId int) bool {
+	limits := GetTokenChannelLimits(c)
+	if len(limits) == 0 {
+		return true
+	}
+	for _, id := range limits {
+		if id == channelId {
+			return true
+		}
+	}
+	return false
+}
+
 func (p *RetryParam) GetRetry() int {
 	if p.Retry == nil {
 		return 0
@@ -85,6 +114,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 	var err error
 	selectGroup := param.TokenGroup
 	userGroup := common.GetContextKeyString(param.Ctx, constant.ContextKeyUserGroup)
+	allowedChannelIds := GetTokenChannelLimits(param.Ctx)
 
 	if param.TokenGroup == "auto" {
 		autoGroups := GetRequestAutoGroups(param.Ctx, userGroup)
@@ -115,7 +145,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath)
+			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath, allowedChannelIds)
 			if channel == nil {
 				// Current group has no available channel for this model, try next group
 				// 当前分组没有该模型的可用渠道，尝试下一个分组
@@ -153,7 +183,7 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			break
 		}
 	} else {
-		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath)
+		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath, allowedChannelIds)
 		if err != nil {
 			return nil, param.TokenGroup, err
 		}
