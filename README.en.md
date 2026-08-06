@@ -85,10 +85,20 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Three injection modes**: prepend / append / override the existing system prompt
 - **All protocols covered**: OpenAI, Claude, and Gemini requests; channel-level system prompts still apply on top
 
-### 9. Other Improvements
+### 9. Token-level Channel Limits
+
+- **Per-key channel whitelist**: every API Key can define an allowed-channel list (e.g. `Hermes → 8 channels`); requests are routed only to whitelisted channels, everything else is rejected
+- **Model + channel double restriction**: channel limits and model limits are independent and both active — the request is validated against the model whitelist first, then channel selection happens within the channel whitelist
+- **Empty means allow-all**: leaving channel limits empty allows every channel (same semantics as model limits)
+- **Group mechanism hidden**: the legacy Group mechanism is kept in code (as the channel candidate-set source) but fully hidden from the UI — no group traces remain in key editing, channel editing, or channel lists, so no manual group management is needed
+- **Auto-disabled channels recoverable**: channels auto-disabled after consecutive failures (status=3) can be manually re-enabled by an admin
+
+### 10. Other Improvements
 
 - **Channel test-model dropdown**: test model is now a real dropdown sourced from the channel's configured models (incl. "Models & Groups"), with adaptive width
 - **Form reset fix**: closing the create-channel drawer after a successful submission properly resets the form and advanced-settings panel state
+- **Usage-log IP column**: common logs show an IP column (after enabling "Record IP Address" under Profile → Notifications, consume/error logs record and display the client IP)
+- **Models page defaults to merges**: the Models page tab order is Merges → Metadata → Deployments, landing on Model Merges by default
 
 ## Quick Start
 
