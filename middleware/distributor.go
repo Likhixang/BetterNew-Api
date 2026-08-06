@@ -482,7 +482,38 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 		common.SetContextKey(c, constant.ContextKeyChannelOrganization, *channel.OpenAIOrganization)
 	}
 	common.SetContextKey(c, constant.ContextKeyChannelAutoBan, channel.GetAutoBan())
-	common.SetContextKey(c, constant.ContextKeyChannelModelMapping, channel.GetModelMapping())
+	// If the channel was selected through model-merge reverse matching, the
+	// requested model name is not the channel's real model name. Build a
+	// dynamic model_mapping entry (requested name -> channel-side real name) so
+	// the upstream relay sends the channel's actual model (mirrors AxonHub
+	// model associations, where a request name resolves to the channel's real
+	// model without any manual model_mapping). The resolved name is normally
+	// set by channel selection; fall back to scanning the channel's models for
+	// affinity and other direct-selection paths.
+	resolvedModelName := ""
+	if resolvedModel, ok := common.GetContextKey(c, constant.ContextKeyMergeResolvedModelName); ok {
+		if s, isStr := resolvedModel.(string); isStr {
+			resolvedModelName = s
+		}
+	}
+	if resolvedModelName == "" || resolvedModelName == modelName {
+		resolvedModelName = model.ResolveChannelSideModelName(channel, modelName)
+	}
+	modelMapping := channel.GetModelMapping()
+	if resolvedModelName != "" && resolvedModelName != modelName {
+		mergeMap := make(map[string]string)
+		if modelMapping != "" && modelMapping != "{}" {
+			if err := common.UnmarshalJsonStr(modelMapping, &mergeMap); err != nil {
+				common.SysError(fmt.Sprintf("failed to parse channel model_mapping: %v", err))
+				mergeMap = make(map[string]string)
+			}
+		}
+		mergeMap[modelName] = resolvedModelName
+		if b, err := common.Marshal(mergeMap); err == nil {
+			modelMapping = string(b)
+		}
+	}
+	common.SetContextKey(c, constant.ContextKeyChannelModelMapping, modelMapping)
 	common.SetContextKey(c, constant.ContextKeyChannelStatusCodeMapping, channel.GetStatusCodeMapping())
 
 	key, index, newAPIError := channel.GetNextEnabledKey()

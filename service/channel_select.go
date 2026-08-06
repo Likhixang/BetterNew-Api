@@ -145,7 +145,13 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			}
 			logger.LogDebug(param.Ctx, "Auto selecting group: %s, priorityRetry: %d", autoGroup, priorityRetry)
 
-			channel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath, allowedChannelIds)
+			var channelSideModel string
+			channel, channelSideModel, _ = model.GetRandomSatisfiedChannel(autoGroup, param.ModelName, priorityRetry, param.RequestPath, allowedChannelIds)
+			if channelSideModel != "" && channelSideModel != param.ModelName {
+				// Remember the channel-side real model name so the upstream
+				// request uses it (model-merge reverse match).
+				common.SetContextKey(param.Ctx, constant.ContextKeyMergeResolvedModelName, channelSideModel)
+			}
 			if channel == nil {
 				// Current group has no available channel for this model, try next group
 				// 当前分组没有该模型的可用渠道，尝试下一个分组
@@ -183,9 +189,15 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			break
 		}
 	} else {
-		channel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath, allowedChannelIds)
+		var channelSideModel string
+		channel, channelSideModel, err = model.GetRandomSatisfiedChannel(param.TokenGroup, param.ModelName, param.GetRetry(), param.RequestPath, allowedChannelIds)
 		if err != nil {
 			return nil, param.TokenGroup, err
+		}
+		if channelSideModel != "" && channelSideModel != param.ModelName {
+			// Remember the channel-side real model name so the upstream
+			// request uses it (model-merge reverse match).
+			common.SetContextKey(param.Ctx, constant.ContextKeyMergeResolvedModelName, channelSideModel)
 		}
 	}
 	return channel, selectGroup, nil

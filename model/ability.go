@@ -105,13 +105,20 @@ func getChannelQuery(group string, model string, retry int) (*gorm.DB, error) {
 	return channelQuery, nil
 }
 
-func GetChannel(group string, model string, retry int, requestPath string, allowedChannelIds []int) (*Channel, error) {
+// GetChannel returns a random channel that can serve the model, querying the
+// database directly (used when the memory cache is disabled). It first looks
+// for channels with the exact model name; when none exist it falls back to
+// model-merge reverse matching: any channel model that merges to the requested
+// name (per global merge rules) becomes a candidate. The second return value is
+// the channel-side model name to send upstream (the requested name on exact
+// hits, the merge alias on reverse hits).
+func GetChannel(group string, model string, retry int, requestPath string, allowedChannelIds []int) (*Channel, string, error) {
 	var abilities []Ability
 
 	var err error = nil
 	channelQuery, err := getChannelQuery(group, model, retry)
 	if err != nil {
-		return nil, err
+		return nil, model, err
 	}
 	if common.UsingMainDatabase(common.DatabaseTypeSQLite) || common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
 		err = channelQuery.Order("weight DESC").Find(&abilities).Error
@@ -119,8 +126,26 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 		err = channelQuery.Order("weight DESC").Find(&abilities).Error
 	}
 	if err != nil {
-		return nil, err
+		return nil, model, err
 	}
+	// Remember the channel-side model name per ability. On exact hits this is
+	// the requested model; on model-merge reverse hits it is the channel's real
+	// model name that merged to the requested name.
+	channelSideModel := model
+	if len(abilities) == 0 {
+		// Model-merge reverse matching: find all enabled channel models in this
+		// group that merge to the requested name, then query channels for each.
+		mergeAbilities, mergeErr := getChannelByMergeReverse(group, model, retry, requestPath, allowedChannelIds)
+		if mergeErr != nil {
+			return nil, model, mergeErr
+		}
+		if len(mergeAbilities) == 0 {
+			return nil, model, nil
+		}
+		abilities = mergeAbilities
+		channelSideModel = abilities[0].Model
+	}
+
 	abilities = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
 	// Apply token-level channel whitelist (if any).
 	if len(allowedChannelIds) > 0 {
@@ -150,14 +175,48 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 			//log.Printf("weight: %d, ability weight: %d", weight, *ability_.Weight)
 			if weight <= 0 {
 				channel.Id = ability_.ChannelId
+				channelSideModel = ability_.Model
 				break
 			}
 		}
 	} else {
-		return nil, nil
+		return nil, model, nil
 	}
 	err = DB.First(&channel, "id = ?", channel.Id).Error
-	return &channel, err
+	return &channel, channelSideModel, err
+}
+
+// getChannelByMergeReverse finds abilities whose channel-side model name merges
+// to the requested model name (per global merge rules). It queries the group's
+// enabled channel models, checks each against MergeModelName, and returns the
+// abilities for the matching channel-side model names.
+func getChannelByMergeReverse(group string, model string, retry int, requestPath string, allowedChannelIds []int) ([]Ability, error) {
+	var channelModels []string
+	if err := DB.Model(&Ability{}).
+		Where(commonGroupCol+" = ? and enabled = ?", group, true).
+		Distinct().Pluck("model", &channelModels).Error; err != nil {
+		return nil, err
+	}
+	var result []Ability
+	requestCanonical := MergeModelName(model)
+	for _, channelModel := range channelModels {
+		if channelModel == model {
+			continue
+		}
+		if MergeModelName(channelModel) != requestCanonical {
+			continue
+		}
+		channelQuery, err := getChannelQuery(group, channelModel, retry)
+		if err != nil {
+			continue
+		}
+		var abilities []Ability
+		if err := channelQuery.Order("weight DESC").Find(&abilities).Error; err != nil {
+			continue
+		}
+		result = append(result, abilities...)
+	}
+	return result, nil
 }
 
 // filterAbilitiesByRequestPathAndModel restricts candidates by request path and

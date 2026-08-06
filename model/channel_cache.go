@@ -111,7 +111,22 @@ func SyncChannelCache(frequency int) {
 	}
 }
 
-func GetRandomSatisfiedChannel(group string, model string, retry int, requestPath string, allowedChannelIds []int) (*Channel, error) {
+// channelModelCandidate pairs a candidate channel with the channel-side model
+// name that matched. On exact model hits the name equals the requested model;
+// on model-merge reverse hits it is the channel's real model name (the alias
+// that merged to the requested name), which must be sent upstream.
+type channelModelCandidate struct {
+	channelID int
+	modelName string
+}
+
+// GetRandomSatisfiedChannel returns a random channel that can serve the model.
+// It first looks for channels with the exact model name; when none exist it
+// falls back to model-merge reverse matching: any channel model that merges to
+// the requested name (per global merge rules) becomes a candidate. The second
+// return value is the channel-side model name to send upstream (the requested
+// name on exact hits, the merge alias on reverse hits).
+func GetRandomSatisfiedChannel(group string, model string, retry int, requestPath string, allowedChannelIds []int) (*Channel, string, error) {
 	// if memory cache is disabled, get channel directly from database
 	if !common.MemoryCacheEnabled {
 		return GetChannel(group, model, retry, requestPath, allowedChannelIds)
@@ -120,13 +135,44 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 	channelSyncLock.RLock()
 	defer channelSyncLock.RUnlock()
 
+	groupChannels := group2model2channels[group]
+
 	// First, try to find channels with the exact model name.
-	channels := filterChannelsByRequestPathAndModel(group2model2channels[group][model], requestPath, model)
+	candidates := make([]channelModelCandidate, 0)
+	for _, channelId := range filterChannelsByRequestPathAndModel(groupChannels[model], requestPath, model) {
+		candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: model})
+	}
 
 	// If no channels found, try to find channels with the normalized model name.
-	if len(channels) == 0 {
+	if len(candidates) == 0 {
 		normalizedModel := ratio_setting.FormatMatchingModelName(model)
-		channels = filterChannelsByRequestPathAndModel(group2model2channels[group][normalizedModel], requestPath, model)
+		if normalizedModel != "" && normalizedModel != model {
+			for _, channelId := range filterChannelsByRequestPathAndModel(groupChannels[normalizedModel], requestPath, model) {
+				candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: normalizedModel})
+			}
+		}
+	}
+
+	// If still no channels found, fall back to model-merge reverse matching: any
+	// channel model that merges to the requested name is a candidate. The
+	// channel-side model name must be remembered so the upstream request uses
+	// the channel's real model name (mirrors AxonHub model associations).
+	// The requested name is usually already canonical (distributor merges it
+	// before selection), but compare merge results so alias requests that reach
+	// this layer directly still match.
+	if len(candidates) == 0 {
+		requestCanonical := MergeModelName(model)
+		for channelModel, channelIds := range groupChannels {
+			if channelModel == model {
+				continue
+			}
+			if MergeModelName(channelModel) != requestCanonical {
+				continue
+			}
+			for _, channelId := range filterChannelsByRequestPathAndModel(channelIds, requestPath, model) {
+				candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: channelModel})
+			}
+		}
 	}
 
 	// Apply token-level channel whitelist (if any).
@@ -135,32 +181,32 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 		for _, id := range allowedChannelIds {
 			allowedSet[id] = true
 		}
-		filtered := make([]int, 0, len(channels))
-		for _, channelId := range channels {
-			if allowedSet[channelId] {
-				filtered = append(filtered, channelId)
+		filtered := candidates[:0]
+		for _, candidate := range candidates {
+			if allowedSet[candidate.channelID] {
+				filtered = append(filtered, candidate)
 			}
 		}
-		channels = filtered
+		candidates = filtered
 	}
 
-	if len(channels) == 0 {
-		return nil, nil
+	if len(candidates) == 0 {
+		return nil, model, nil
 	}
 
-	if len(channels) == 1 {
-		if channel, ok := channelsIDM[channels[0]]; ok {
-			return channel, nil
+	if len(candidates) == 1 {
+		if channel, ok := channelsIDM[candidates[0].channelID]; ok {
+			return channel, candidates[0].modelName, nil
 		}
-		return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channels[0])
+		return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidates[0].channelID)
 	}
 
 	uniquePriorities := make(map[int]bool)
-	for _, channelId := range channels {
-		if channel, ok := channelsIDM[channelId]; ok {
+	for _, candidate := range candidates {
+		if channel, ok := channelsIDM[candidate.channelID]; ok {
 			uniquePriorities[int(channel.GetPriority())] = true
 		} else {
-			return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channelId)
+			return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidate.channelID)
 		}
 	}
 	var sortedUniquePriorities []int
@@ -176,20 +222,20 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 
 	// get the priority for the given retry number
 	var sumWeight = 0
-	var targetChannels []*Channel
-	for _, channelId := range channels {
-		if channel, ok := channelsIDM[channelId]; ok {
+	var targetChannels []channelModelCandidate
+	for _, candidate := range candidates {
+		if channel, ok := channelsIDM[candidate.channelID]; ok {
 			if channel.GetPriority() == targetPriority {
 				sumWeight += channel.GetWeight()
-				targetChannels = append(targetChannels, channel)
+				targetChannels = append(targetChannels, candidate)
 			}
 		} else {
-			return nil, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", channelId)
+			return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidate.channelID)
 		}
 	}
 
 	if len(targetChannels) == 0 {
-		return nil, errors.New(fmt.Sprintf("no channel found, group: %s, model: %s, priority: %d", group, model, targetPriority))
+		return nil, model, errors.New(fmt.Sprintf("no channel found, group: %s, model: %s, priority: %d", group, model, targetPriority))
 	}
 
 	// smoothing factor and adjustment
@@ -213,14 +259,14 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 	randomWeight := rand.Intn(totalWeight)
 
 	// Find a channel based on its weight
-	for _, channel := range targetChannels {
-		randomWeight -= channel.GetWeight()*smoothingFactor + smoothingAdjustment
+	for _, candidate := range targetChannels {
+		randomWeight -= channelsIDM[candidate.channelID].GetWeight()*smoothingFactor + smoothingAdjustment
 		if randomWeight < 0 {
-			return channel, nil
+			return channelsIDM[candidate.channelID], candidate.modelName, nil
 		}
 	}
 	// return null if no channel is not found
-	return nil, errors.New("channel not found")
+	return nil, model, errors.New("channel not found")
 }
 
 // filterChannelsByRequestPathAndModel restricts candidates by request path and
