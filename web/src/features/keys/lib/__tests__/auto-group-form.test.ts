@@ -53,6 +53,7 @@ const baseApiKey: ApiKey = {
   model_limits_enabled: false,
   model_limits: '',
   model_mapping: '',
+  channel_limits: '',
   allow_ips: '',
 }
 

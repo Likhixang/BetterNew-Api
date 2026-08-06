@@ -66,6 +66,7 @@ import { useStatus } from '@/hooks/use-status'
 import { getUserModels, getUserGroups } from '@/lib/api'
 import { getCurrencyDisplay, getCurrencyLabel } from '@/lib/currency'
 import { cn } from '@/lib/utils'
+import { getChannels } from '@/features/channels/api'
 
 import {
   createApiKey,
@@ -121,6 +122,14 @@ export function ApiKeysMutateDrawer({
     staleTime: 0,
   })
 
+  // Fetch channels (for the allowed-channels whitelist picker)
+  const { data: channelsData } = useQuery({
+    queryKey: ['channels-list'],
+    queryFn: () => getChannels({ p: 1, page_size: 200 }),
+    enabled: open,
+    staleTime: 0,
+  })
+
   // Fetch groups
   const {
     data: groupsData,
@@ -156,6 +165,14 @@ export function ApiKeysMutateDrawer({
   })
 
   const models = modelsData?.data || []
+  const channelOptions = useMemo(
+    () =>
+      (channelsData?.data?.items || []).map((channel) => ({
+        label: `${channel.name} (#${channel.id})`,
+        value: String(channel.id),
+      })),
+    [channelsData]
+  )
   const groups = useMemo<ApiKeyGroupOption[]>(
     () =>
       Object.entries(groupsData?.data || {}).map(([key, info]) => ({
@@ -736,6 +753,32 @@ export function ApiKeysMutateDrawer({
                           <FormDescription>
                             {t(
                               'Redirect a requested model to another model for this key.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='channel_limits'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Allowed Channels')}</FormLabel>
+                          <FormControl>
+                            <MultiSelect
+                              options={channelOptions}
+                              selected={field.value}
+                              onChange={field.onChange}
+                              placeholder={t(
+                                'Select channels (empty for allow all)'
+                              )}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Limit which channels can be used with this key. Group rules still apply on top of this whitelist.'
                             )}
                           </FormDescription>
                           <FormMessage />
