@@ -434,8 +434,7 @@ export function ApiKeysMutateDrawer({
                 control={form.control}
                 name='group'
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t('Group')}</FormLabel>
+                  <FormItem className='hidden'>
                     <FormControl>
                       <ApiKeyGroupCombobox
                         options={groups}
@@ -737,31 +736,6 @@ export function ApiKeysMutateDrawer({
 
                     <FormField
                       control={form.control}
-                      name='model_mapping'
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Model Mapping')}</FormLabel>
-                          <FormControl>
-                            <ModelMappingEditor
-                              value={field.value || ''}
-                              onChange={field.onChange}
-                              disabled={isSubmitting}
-                              sourceModelOptions={models}
-                              targetModelOptions={models}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            {t(
-                              'Redirect a requested model to another model for this key.'
-                            )}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
                       name='channel_limits'
                       render={({ field }) => (
                         <FormItem>
@@ -779,6 +753,31 @@ export function ApiKeysMutateDrawer({
                           <FormDescription>
                             {t(
                               'Limit which channels can be used with this key. Group rules still apply on top of this whitelist.'
+                            )}
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name='model_mapping'
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('Model Mapping')}</FormLabel>
+                          <FormControl>
+                            <ModelMappingEditor
+                              value={field.value || ''}
+                              onChange={field.onChange}
+                              disabled={isSubmitting}
+                              sourceModelOptions={models}
+                              targetModelOptions={models}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            {t(
+                              'Redirect a requested model to another model for this key.'
                             )}
                           </FormDescription>
                           <FormMessage />
