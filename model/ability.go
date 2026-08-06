@@ -117,17 +117,19 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 
 	var err error = nil
 	channelQuery, err := getChannelQuery(group, model, retry)
-	if err != nil {
-		return nil, model, err
+	if err == nil {
+		if common.UsingMainDatabase(common.DatabaseTypeSQLite) || common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
+			err = channelQuery.Order("weight DESC").Find(&abilities).Error
+		} else {
+			err = channelQuery.Order("weight DESC").Find(&abilities).Error
+		}
+		if err != nil {
+			return nil, model, err
+		}
 	}
-	if common.UsingMainDatabase(common.DatabaseTypeSQLite) || common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
-		err = channelQuery.Order("weight DESC").Find(&abilities).Error
-	} else {
-		err = channelQuery.Order("weight DESC").Find(&abilities).Error
-	}
-	if err != nil {
-		return nil, model, err
-	}
+	// getChannelQuery errors (e.g. "数据库一致性被破坏" from getPriority when
+	// the exact model has no enabled abilities and retry > 0) mean the exact
+	// name has no channels; fall through to model-merge reverse matching.
 	// Remember the channel-side model name per ability. On exact hits this is
 	// the requested model; on model-merge reverse hits it is the channel's real
 	// model name that merged to the requested name.
@@ -189,7 +191,12 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 // getChannelByMergeReverse finds abilities whose channel-side model name merges
 // to the requested model name (per global merge rules). It queries the group's
 // enabled channel models, checks each against MergeModelName, and returns the
-// abilities for the matching channel-side model names.
+// abilities for the matching channel-side model names. Only channels that are
+// currently enabled participate (a manually disabled channel may still carry
+// stale enabled abilities, which must not be routed to). Query failures for a
+// single merged model (e.g. getPriority reporting no enabled abilities) are
+// treated as "no channel for that name" and skipped, mirroring the exact-name
+// fall-through in GetChannel.
 func getChannelByMergeReverse(group string, model string, retry int, requestPath string, allowedChannelIds []int) ([]Ability, error) {
 	var channelModels []string
 	if err := DB.Model(&Ability{}).
@@ -206,7 +213,9 @@ func getChannelByMergeReverse(group string, model string, retry int, requestPath
 		if MergeModelName(channelModel) != requestCanonical {
 			continue
 		}
-		channelQuery, err := getChannelQuery(group, channelModel, retry)
+		// Use retry=0 so getPriority does not abort when the merged model has
+		// no enabled abilities; priority selection happens in GetChannel.
+		channelQuery, err := getChannelQuery(group, channelModel, 0)
 		if err != nil {
 			continue
 		}
@@ -216,7 +225,37 @@ func getChannelByMergeReverse(group string, model string, retry int, requestPath
 		}
 		result = append(result, abilities...)
 	}
-	return result, nil
+	if len(result) == 0 {
+		return result, nil
+	}
+	// Filter out channels that are not currently enabled: a channel may be
+	// manually disabled while its abilities rows still say enabled.
+	channelIds := make([]int, 0, len(result))
+	seen := make(map[int]struct{}, len(result))
+	for _, ability := range result {
+		if _, ok := seen[ability.ChannelId]; ok {
+			continue
+		}
+		seen[ability.ChannelId] = struct{}{}
+		channelIds = append(channelIds, ability.ChannelId)
+	}
+	var channels []*Channel
+	if err := DB.Where("id IN ?", channelIds).Find(&channels).Error; err != nil {
+		return nil, err
+	}
+	enabledIds := make(map[int]struct{}, len(channels))
+	for _, ch := range channels {
+		if ch.Status == common.ChannelStatusEnabled {
+			enabledIds[ch.Id] = struct{}{}
+		}
+	}
+	filtered := make([]Ability, 0, len(result))
+	for _, ability := range result {
+		if _, ok := enabledIds[ability.ChannelId]; ok {
+			filtered = append(filtered, ability)
+		}
+	}
+	return filtered, nil
 }
 
 // filterAbilitiesByRequestPathAndModel restricts candidates by request path and
