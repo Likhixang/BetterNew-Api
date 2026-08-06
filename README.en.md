@@ -97,7 +97,7 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 | Purpose | Image |
 |---|---|
 | **Production** (auto-updated) | `ghcr.io/likhixang/betternew-api:latest` |
-| **Pinned release** (v1.0.0-rc.23-patch2) | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch2` |
+| **Pinned release** (v1.0.0-rc.23-patch3) | `ghcr.io/likhixang/betternew-api:v1.0.0-rc.23-patch3` |
 | **Testing** (patch/test branch) | `ghcr.io/likhixang/betternew-api:patch-test` |
 
 ```bash

@@ -50,8 +50,8 @@ jobs:
           echo "TAG=${TAG}" >> $GITHUB_ENV
           echo "PUSH_LATEST=${PUSH_LATEST}" >> $GITHUB_ENV
           echo "tag=${TAG}" >> $GITHUB_OUTPUT
-          # 固定 patch 版本号：镜像 tag 仍按分支区分，但版本显示统一为 v1.0.0-rc.23-patch2
-          echo "v1.0.0-rc.23-patch2" > VERSION
+          # 固定 patch 版本号：镜像 tag 仍按分支区分，但版本显示统一为 v1.0.0-rc.23-patch3
+          echo "v1.0.0-rc.23-patch3" > VERSION
           echo "Building tag: ${TAG} (push latest: ${PUSH_LATEST})"
 
       - name: Set up Docker Buildx
