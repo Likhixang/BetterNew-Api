@@ -75,6 +75,9 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 ### 7. Model Merge
 
 - **Inbound model-name normalization**: global rules rewrite requested model names (exact match or Go regex) into a canonical target model (e.g. `cx/deepseek-v4-flash` → `deepseek-v4-flash`), applied to channel selection, upstream relay, and billing
+- **Automatic channel resolution (merge reverse matching)**: during channel selection, every channel whose model normalizes to the target under the merge rules joins the candidate pool alongside exact-name channels — a request for `longcat-2.0` can route to a channel that only serves `longcat-2.0-free`, with **no per-channel model_mapping or manual model registration needed** (aligned with AxonHub model-association semantics)
+- **All-candidate random selection**: exact-match and merge-match channels share one pool with weighted random selection (no exact-name priority); a failing channel is retried across the other candidates
+- **Automatic upstream rename**: when a merge-match channel is picked, the request is relayed upstream under the channel's real model name (e.g. `longcat-2.0` → upstream receives `longcat-2.0-free`); an explicit per-channel model_mapping takes precedence over the automatic derivation
 - **Multi-alias rules**: a single rule can carry multiple aliases (one per line), each registered independently against the shared target model
 - **Live match preview**: while editing a rule, matching models and channels are previewed per channel in real time; exact matches win, regex rules are evaluated by ascending rule ID
 - **Standard table framework**: the rules list uses the standard DataTablePage framework (pagination / rows-per-page / totals) and the standard drawer layout
