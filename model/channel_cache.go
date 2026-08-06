@@ -137,41 +137,48 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 
 	groupChannels := group2model2channels[group]
 
-	// First, try to find channels with the exact model name.
+	// First, collect channels with the exact model name.
 	candidates := make([]channelModelCandidate, 0)
+	seenChannels := make(map[int]string) // channelID -> channel-side model name, exact wins
+	addCandidate := func(channelId int, modelName string) {
+		if _, ok := seenChannels[channelId]; ok {
+			return
+		}
+		seenChannels[channelId] = modelName
+		candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: modelName})
+	}
 	for _, channelId := range filterChannelsByRequestPathAndModel(groupChannels[model], requestPath, model) {
-		candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: model})
+		addCandidate(channelId, model)
 	}
 
-	// If no channels found, try to find channels with the normalized model name.
-	if len(candidates) == 0 {
-		normalizedModel := ratio_setting.FormatMatchingModelName(model)
-		if normalizedModel != "" && normalizedModel != model {
-			for _, channelId := range filterChannelsByRequestPathAndModel(groupChannels[normalizedModel], requestPath, model) {
-				candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: normalizedModel})
-			}
+	// Then channels with the normalized model name (exact takes precedence).
+	normalizedModel := ratio_setting.FormatMatchingModelName(model)
+	if normalizedModel != "" && normalizedModel != model {
+		for _, channelId := range filterChannelsByRequestPathAndModel(groupChannels[normalizedModel], requestPath, model) {
+			addCandidate(channelId, normalizedModel)
 		}
 	}
 
-	// If still no channels found, fall back to model-merge reverse matching: any
-	// channel model that merges to the requested name is a candidate. The
-	// channel-side model name must be remembered so the upstream request uses
-	// the channel's real model name (mirrors AxonHub model associations).
+	// Finally, model-merge reverse matching: any channel model that merges to
+	// the requested name is ALSO a candidate, so merge-mapped channels
+	// participate in the weighted random selection together with exact/normalized
+	// channels (mirrors AxonHub model associations, where a request name
+	// resolves to every matching channel entry). The channel-side model name is
+	// remembered so the upstream request uses the channel's real model name.
 	// The requested name is usually already canonical (distributor merges it
 	// before selection), but compare merge results so alias requests that reach
-	// this layer directly still match.
-	if len(candidates) == 0 {
-		requestCanonical := MergeModelNameCached(model)
-		for channelModel, channelIds := range groupChannels {
-			if channelModel == model {
-				continue
-			}
-			if MergeModelNameCached(channelModel) != requestCanonical {
-				continue
-			}
-			for _, channelId := range filterChannelsByRequestPathAndModel(channelIds, requestPath, model) {
-				candidates = append(candidates, channelModelCandidate{channelID: channelId, modelName: channelModel})
-			}
+	// this layer directly still match. Channels already present (exact or
+	// normalized) are not added twice, so their weight counts once.
+	requestCanonical := MergeModelNameCached(model)
+	for channelModel, channelIds := range groupChannels {
+		if channelModel == model {
+			continue
+		}
+		if MergeModelNameCached(channelModel) != requestCanonical {
+			continue
+		}
+		for _, channelId := range filterChannelsByRequestPathAndModel(channelIds, requestPath, model) {
+			addCandidate(channelId, channelModel)
 		}
 	}
 
@@ -201,41 +208,22 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 		return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidates[0].channelID)
 	}
 
-	uniquePriorities := make(map[int]bool)
-	for _, candidate := range candidates {
-		if channel, ok := channelsIDM[candidate.channelID]; ok {
-			uniquePriorities[int(channel.GetPriority())] = true
-		} else {
-			return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidate.channelID)
-		}
-	}
-	var sortedUniquePriorities []int
-	for priority := range uniquePriorities {
-		sortedUniquePriorities = append(sortedUniquePriorities, priority)
-	}
-	sort.Sort(sort.Reverse(sort.IntSlice(sortedUniquePriorities)))
-
-	if retry >= len(uniquePriorities) {
-		retry = len(uniquePriorities) - 1
-	}
-	targetPriority := int64(sortedUniquePriorities[retry])
-
-	// get the priority for the given retry number
+	// All candidates — exact, normalized, and model-merge reverse matches —
+	// participate in one weighted random pool (mirrors AxonHub, where a request
+	// name resolves to every matching channel entry and selection is random
+	// among them; retry simply re-runs this selection with fresh randomness).
+	targetChannels := candidates
 	var sumWeight = 0
-	var targetChannels []channelModelCandidate
-	for _, candidate := range candidates {
+	for _, candidate := range targetChannels {
 		if channel, ok := channelsIDM[candidate.channelID]; ok {
-			if channel.GetPriority() == targetPriority {
-				sumWeight += channel.GetWeight()
-				targetChannels = append(targetChannels, candidate)
-			}
+			sumWeight += channel.GetWeight()
 		} else {
 			return nil, model, fmt.Errorf("数据库一致性错误，渠道# %d 不存在，请联系管理员修复", candidate.channelID)
 		}
 	}
 
 	if len(targetChannels) == 0 {
-		return nil, model, errors.New(fmt.Sprintf("no channel found, group: %s, model: %s, priority: %d", group, model, targetPriority))
+		return nil, model, errors.New(fmt.Sprintf("no channel found, group: %s, model: %s", group, model))
 	}
 
 	// smoothing factor and adjustment

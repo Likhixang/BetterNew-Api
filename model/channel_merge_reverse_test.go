@@ -163,6 +163,86 @@ func TestIsChannelEnabledForGroupModelMergeReverse(t *testing.T) {
 	}
 }
 
+// TestGetRandomSatisfiedChannelMergeAndExactTogether verifies that merge-reverse
+// channels participate in selection EVEN WHEN exact channels exist (AxonHub
+// semantics): the candidate pool contains both, and repeated selections can
+// hit either. Weight is 1 for both channels, so each should appear over a
+// reasonable number of trials.
+func TestGetRandomSatisfiedChannelMergeAndExactTogether(t *testing.T) {
+	// channel 18: exact deepseek-v4-flash; channel 19: merge alias
+	// deepseek-v4-flash-free -> deepseek-v4-flash. Add a merge rule mapping the
+	// free alias to the canonical name.
+	oldMemoryCache := common.MemoryCacheEnabled
+	common.MemoryCacheEnabled = true
+	t.Cleanup(func() { common.MemoryCacheEnabled = oldMemoryCache })
+
+	w1 := uint(1)
+	p0 := int64(0)
+	ch18 := &Channel{Id: 18, Name: "exact", Status: common.ChannelStatusEnabled, Models: "deepseek-v4-flash", Type: 1, Priority: &p0, Weight: &w1}
+	ch19 := &Channel{Id: 19, Name: "free", Status: common.ChannelStatusEnabled, Models: "deepseek-v4-flash-free", Type: 1, Priority: &p0, Weight: &w1}
+
+	channelSyncLock.Lock()
+	oldChannelsIDM := channelsIDM
+	oldGroup2model2channels := group2model2channels
+	channelsIDM = map[int]*Channel{18: ch18, 19: ch19}
+	group2model2channels = map[string]map[string][]int{
+		"default": {
+			"deepseek-v4-flash":      {18},
+			"deepseek-v4-flash-free": {19},
+		},
+	}
+	channelSyncLock.Unlock()
+	t.Cleanup(func() {
+		channelSyncLock.Lock()
+		channelsIDM = oldChannelsIDM
+		group2model2channels = oldGroup2model2channels
+		channelSyncLock.Unlock()
+	})
+
+	modelMergeMutex.Lock()
+	oldExact := modelMergeExact
+	oldRegex := modelMergeRegex
+	oldReady := modelMergeReady
+	modelMergeExact = map[string]string{"deepseek-v4-flash-free": "deepseek-v4-flash"}
+	modelMergeRegex = nil
+	modelMergeReady = true
+	modelMergeMutex.Unlock()
+	t.Cleanup(func() {
+		modelMergeMutex.Lock()
+		modelMergeExact = oldExact
+		modelMergeRegex = oldRegex
+		modelMergeReady = oldReady
+		modelMergeMutex.Unlock()
+		mergeReverseMutex.Lock()
+		mergeReverseCache = nil
+		mergeReverseMutex.Unlock()
+	})
+
+	seen := make(map[int]int)
+	for i := 0; i < 200; i++ {
+		channel, channelSideModel, err := GetRandomSatisfiedChannel("default", "deepseek-v4-flash", 0, "", nil)
+		if err != nil {
+			t.Fatalf("iteration %d: unexpected error: %v", i, err)
+		}
+		if channel == nil {
+			t.Fatalf("iteration %d: nil channel", i)
+		}
+		seen[channel.Id]++
+		if channel.Id == 19 && channelSideModel != "deepseek-v4-flash-free" {
+			t.Fatalf("channel 19 must carry its real model name, got %q", channelSideModel)
+		}
+		if channel.Id == 18 && channelSideModel != "deepseek-v4-flash" {
+			t.Fatalf("channel 18 must carry exact model name, got %q", channelSideModel)
+		}
+	}
+	if seen[18] == 0 || seen[19] == 0 {
+		t.Fatalf("both channels must be selectable, seen=%v", seen)
+	}
+	if seen[18]+seen[19] != 200 {
+		t.Fatalf("total selections = %d, want 200", seen[18]+seen[19])
+	}
+}
+
 func TestResolveChannelSideModelName(t *testing.T) {
 	setupMergeReverseChannelCache(t)
 

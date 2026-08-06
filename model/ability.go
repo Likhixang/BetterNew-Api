@@ -127,6 +127,10 @@ func getChannelQuery(group string, model string, retry int) (*gorm.DB, error) {
 // hits, the merge alias on reverse hits).
 func GetChannel(group string, model string, retry int, requestPath string, allowedChannelIds []int) (*Channel, string, error) {
 	var abilities []Ability
+	// The channel-side model name to send upstream: the requested name on
+	// exact hits, the channel's real model name on merge-reverse hits (set
+	// again when the channel is actually picked below).
+	channelSideModel := model
 
 	var err error = nil
 	channelQuery, err := getChannelQuery(group, model, retry)
@@ -152,19 +156,27 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 	// Remember the channel-side model name per ability. On exact hits this is
 	// the requested model; on model-merge reverse hits it is the channel's real
 	// model name that merged to the requested name.
-	channelSideModel := model
-	if len(abilities) == 0 {
-		// Model-merge reverse matching: find all enabled channel models in this
-		// group that merge to the requested name, then query channels for each.
-		mergeAbilities, mergeErr := getChannelByMergeReverse(group, model, retry, requestPath, allowedChannelIds)
-		if mergeErr != nil {
-			return nil, model, mergeErr
+	// Model-merge reverse matching runs unconditionally: any channel model that
+	// merges to the requested name is ALSO a candidate, so merge-mapped channels
+	// participate in the weighted random selection together with exact channels
+	// (mirrors AxonHub model associations, where a request name resolves to
+	// every matching channel entry and selection is random among them). Exact
+	// channels win on ties for the same channel (dedup by channel id).
+	mergeAbilities, mergeErr := getChannelByMergeReverse(group, model, retry, requestPath, allowedChannelIds)
+	if mergeErr != nil {
+		return nil, model, mergeErr
+	}
+	if len(mergeAbilities) > 0 {
+		seenChannels := make(map[int]bool, len(abilities))
+		for _, ability := range abilities {
+			seenChannels[ability.ChannelId] = true
 		}
-		if len(mergeAbilities) == 0 {
-			return nil, model, nil
+		for _, ability := range mergeAbilities {
+			if !seenChannels[ability.ChannelId] {
+				seenChannels[ability.ChannelId] = true
+				abilities = append(abilities, ability)
+			}
 		}
-		abilities = mergeAbilities
-		channelSideModel = abilities[0].Model
 	}
 
 	abilities = filterAbilitiesByRequestPathAndModel(abilities, requestPath, model)
@@ -184,47 +196,15 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 	}
 	channel := Channel{}
 	if len(abilities) > 0 {
-		// Priority layering with retry (mirrors the memory-cache path): the
-		// exact query returns a single priority layer selected by retry, while
-		// merge-reverse abilities span all layers, so pick the layer for this
-		// retry index here.
-		uniquePriorities := make(map[int64]bool)
-		for _, ability_ := range abilities {
-			if ability_.Priority != nil {
-				uniquePriorities[*ability_.Priority] = true
-			}
-		}
-		var sortedUniquePriorities []int64
-		for p := range uniquePriorities {
-			sortedUniquePriorities = append(sortedUniquePriorities, p)
-		}
-		sort.Slice(sortedUniquePriorities, func(i, j int) bool {
-			return sortedUniquePriorities[i] > sortedUniquePriorities[j]
-		})
-		if retry >= len(sortedUniquePriorities) {
-			retry = len(sortedUniquePriorities) - 1
-		}
-		targetPriority := int64(0)
-		if len(sortedUniquePriorities) > 0 {
-			targetPriority = sortedUniquePriorities[retry]
-		}
-
-		// Restrict to the target priority layer.
-		layerAbilities := make([]Ability, 0, len(abilities))
-		for _, ability_ := range abilities {
-			if ability_.Priority == nil || *ability_.Priority == targetPriority {
-				layerAbilities = append(layerAbilities, ability_)
-			}
-		}
-
-		// Randomly choose one within the layer by weight
+		// Randomly choose one by weight among the full candidate pool (exact +
+		// merge-reverse), mirroring the memory-cache path.
 		weightSum := uint(0)
-		for _, ability_ := range layerAbilities {
+		for _, ability_ := range abilities {
 			weightSum += ability_.Weight + 10
 		}
 		// Randomly choose one
 		weight := common.GetRandomInt(int(weightSum))
-		for _, ability_ := range layerAbilities {
+		for _, ability_ := range abilities {
 			weight -= int(ability_.Weight) + 10
 			//log.Printf("weight: %d, ability weight: %d", weight, *ability_.Weight)
 			if weight <= 0 {
