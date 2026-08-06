@@ -38,12 +38,12 @@ func IsChannelEnabledForGroupModel(group string, modelName string, channelID int
 // model in the group that merges to the requested name (memory-cache path).
 func isChannelEnabledForGroupModelByMergeReverse(group string, modelName string, channelID int) bool {
 	groupChannels := group2model2channels[group]
-	requestCanonical := MergeModelName(modelName)
+	requestCanonical := MergeModelNameCached(modelName)
 	for channelModel, channelIds := range groupChannels {
 		if channelModel == modelName {
 			continue
 		}
-		if MergeModelName(channelModel) != requestCanonical {
+		if MergeModelNameCached(channelModel) != requestCanonical {
 			continue
 		}
 		if isChannelIDInList(channelIds, channelID) {
@@ -91,12 +91,12 @@ func isChannelEnabledForGroupModelDB(group string, modelName string, channelID i
 		Distinct().Pluck("model", &channelModels).Error; err != nil {
 		return false
 	}
-	requestCanonical := MergeModelName(modelName)
+	requestCanonical := MergeModelNameCached(modelName)
 	for _, channelModel := range channelModels {
 		if channelModel == modelName {
 			continue
 		}
-		if MergeModelName(channelModel) == requestCanonical {
+		if MergeModelNameCached(channelModel) == requestCanonical {
 			return true
 		}
 	}
@@ -128,12 +128,12 @@ func ResolveChannelSideModelName(channel *Channel, modelName string) string {
 			return modelName
 		}
 	}
-	requestCanonical := MergeModelName(modelName)
+	requestCanonical := MergeModelNameCached(modelName)
 	for _, m := range models {
 		if m == modelName {
 			continue
 		}
-		if MergeModelName(m) == requestCanonical {
+		if MergeModelNameCached(m) == requestCanonical {
 			return m
 		}
 	}

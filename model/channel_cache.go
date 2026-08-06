@@ -161,12 +161,12 @@ func GetRandomSatisfiedChannel(group string, model string, retry int, requestPat
 	// before selection), but compare merge results so alias requests that reach
 	// this layer directly still match.
 	if len(candidates) == 0 {
-		requestCanonical := MergeModelName(model)
+		requestCanonical := MergeModelNameCached(model)
 		for channelModel, channelIds := range groupChannels {
 			if channelModel == model {
 				continue
 			}
-			if MergeModelName(channelModel) != requestCanonical {
+			if MergeModelNameCached(channelModel) != requestCanonical {
 				continue
 			}
 			for _, channelId := range filterChannelsByRequestPathAndModel(channelIds, requestPath, model) {

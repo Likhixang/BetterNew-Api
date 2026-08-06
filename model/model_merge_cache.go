@@ -37,6 +37,13 @@ var (
 	modelMergeExact map[string]string // alias -> target model
 	modelMergeRegex []modelMergeRegexRule
 	modelMergeReady bool
+
+	// mergeReverseCache memoizes MergeModelName results for channel-side model
+	// names. Merge rules change rarely (only on admin edits), so the memo is
+	// invalidated wholesale whenever the rules are reloaded. Guarded by
+	// modelMergeMutex (write) and its own RLock for reads.
+	mergeReverseMutex sync.RWMutex
+	mergeReverseCache map[string]string
 )
 
 type modelMergeRegexRule struct {
@@ -99,6 +106,11 @@ func InitModelMergeCache() error {
 	modelMergeReady = true
 	modelMergeMutex.Unlock()
 
+	// Rules changed: invalidate the reverse-match memo.
+	mergeReverseMutex.Lock()
+	mergeReverseCache = nil
+	mergeReverseMutex.Unlock()
+
 	common.SysLog("model merge: loaded exact=" + strconv.Itoa(len(newExact)) + " regex=" + strconv.Itoa(len(newRegex)))
 	return nil
 }
@@ -125,4 +137,32 @@ func MergeModelName(modelName string) string {
 		}
 	}
 	return modelName
+}
+
+// MergeModelNameCached is MergeModelName with a memo cache for channel-side
+// model names, used by model-merge reverse matching which scans many names per
+// request. Results are memoized per name and invalidated when the merge rules
+// are reloaded. Callers must NOT hold modelMergeMutex when calling this.
+func MergeModelNameCached(modelName string) string {
+	if modelName == "" {
+		return modelName
+	}
+	mergeReverseMutex.RLock()
+	if mergeReverseCache != nil {
+		if target, ok := mergeReverseCache[modelName]; ok {
+			mergeReverseMutex.RUnlock()
+			return target
+		}
+	}
+	mergeReverseMutex.RUnlock()
+
+	target := MergeModelName(modelName)
+
+	mergeReverseMutex.Lock()
+	if mergeReverseCache == nil {
+		mergeReverseCache = make(map[string]string)
+	}
+	mergeReverseCache[modelName] = target
+	mergeReverseMutex.Unlock()
+	return target
 }

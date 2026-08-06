@@ -27,7 +27,8 @@ import (
 
 // setupMergeReverseChannelCache installs a small in-memory channel cache with
 // one channel serving longcat-2.0-free, plus the model-merge rule that maps
-// LongCat-2.0(-preview|-free)? to longcat-2.0.
+// LongCat-2.0(-preview|-free)? to longcat-2.0. All global state is restored on
+// cleanup so other tests are not affected.
 func setupMergeReverseChannelCache(t *testing.T) {
 	t.Helper()
 	oldMemoryCache := common.MemoryCacheEnabled
@@ -43,6 +44,8 @@ func setupMergeReverseChannelCache(t *testing.T) {
 	}
 
 	channelSyncLock.Lock()
+	oldChannelsIDM := channelsIDM
+	oldGroup2model2channels := group2model2channels
 	channelsIDM = map[int]*Channel{18: channel}
 	group2model2channels = map[string]map[string][]int{
 		"default": {
@@ -50,8 +53,17 @@ func setupMergeReverseChannelCache(t *testing.T) {
 		},
 	}
 	channelSyncLock.Unlock()
+	t.Cleanup(func() {
+		channelSyncLock.Lock()
+		channelsIDM = oldChannelsIDM
+		group2model2channels = oldGroup2model2channels
+		channelSyncLock.Unlock()
+	})
 
 	modelMergeMutex.Lock()
+	oldExact := modelMergeExact
+	oldRegex := modelMergeRegex
+	oldReady := modelMergeReady
 	modelMergeExact = map[string]string{}
 	modelMergeRegex = []modelMergeRegexRule{
 		{
@@ -62,6 +74,16 @@ func setupMergeReverseChannelCache(t *testing.T) {
 	}
 	modelMergeReady = true
 	modelMergeMutex.Unlock()
+	t.Cleanup(func() {
+		modelMergeMutex.Lock()
+		modelMergeExact = oldExact
+		modelMergeRegex = oldRegex
+		modelMergeReady = oldReady
+		modelMergeMutex.Unlock()
+		mergeReverseMutex.Lock()
+		mergeReverseCache = nil
+		mergeReverseMutex.Unlock()
+	})
 }
 
 func TestGetRandomSatisfiedChannelMergeReverse(t *testing.T) {
@@ -163,5 +185,48 @@ func TestResolveChannelSideModelName(t *testing.T) {
 	}
 	if got := ResolveChannelSideModelName(nil, "longcat-2.0"); got != "longcat-2.0" {
 		t.Fatalf("nil channel should pass through: got %q", got)
+	}
+}
+
+func TestMergeModelNameCached(t *testing.T) {
+	setupMergeReverseChannelCache(t)
+
+	// First call computes and memoizes; second call hits the cache. Both must
+	// return the same canonical result.
+	for i := 0; i < 2; i++ {
+		if got := MergeModelNameCached("longcat-2.0-free"); got != "longcat-2.0" {
+			t.Fatalf("MergeModelNameCached(longcat-2.0-free) = %q, want %q", got, "longcat-2.0")
+		}
+	}
+	if got := MergeModelNameCached("unrelated-model"); got != "unrelated-model" {
+		t.Fatalf("unmatched should pass through: got %q", got)
+	}
+	if got := MergeModelNameCached(""); got != "" {
+		t.Fatalf("empty should pass through: got %q", got)
+	}
+}
+
+func TestMergeModelNameCachedInvalidatedOnReload(t *testing.T) {
+	setupMergeReverseChannelCache(t)
+
+	if got := MergeModelNameCached("longcat-2.0-free"); got != "longcat-2.0" {
+		t.Fatalf("before reload: %q", got)
+	}
+	// Reload rules with a different mapping for the same alias.
+	modelMergeMutex.Lock()
+	modelMergeRegex = []modelMergeRegexRule{
+		{
+			priority: 99,
+			pattern:  regexp.MustCompile(`(?i)^(?:LongCat\-2\.0(?:-(?:preview|free))?)$`),
+			target:   "longcat-2.0-v2",
+		},
+	}
+	modelMergeMutex.Unlock()
+	mergeReverseMutex.Lock()
+	mergeReverseCache = nil
+	mergeReverseMutex.Unlock()
+
+	if got := MergeModelNameCached("longcat-2.0-free"); got != "longcat-2.0-v2" {
+		t.Fatalf("after reload: %q, want %q", got, "longcat-2.0-v2")
 	}
 }

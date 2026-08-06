@@ -110,6 +110,10 @@ func (p *RetryParam) ResetRetryNextTry() {
 //	Retry=3: GroupB, priority1 (startRetryIndex=2, priorityRetry=1)
 //	         分组B, 优先级1
 func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, error) {
+	// Clear the merge-resolved model name left by a previous retry: the same
+	// gin.Context is reused across retries, and a stale value would inject a
+	// wrong model_mapping into a channel selected by a later exact hit.
+	common.SetContextKey(param.Ctx, constant.ContextKeyMergeResolvedModelName, "")
 	var channel *model.Channel
 	var err error
 	selectGroup := param.TokenGroup

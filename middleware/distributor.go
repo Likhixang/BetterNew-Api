@@ -508,7 +508,11 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 				mergeMap = make(map[string]string)
 			}
 		}
-		mergeMap[modelName] = resolvedModelName
+		// An explicit mapping configured by the user takes precedence over the
+		// merge-derived one; only fill in the gap when the key is absent.
+		if _, exists := mergeMap[modelName]; !exists {
+			mergeMap[modelName] = resolvedModelName
+		}
 		if b, err := common.Marshal(mergeMap); err == nil {
 			modelMapping = string(b)
 		}

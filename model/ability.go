@@ -3,6 +3,7 @@ package model
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -60,6 +61,18 @@ func GetAllEnableAbilities() []Ability {
 	return abilities
 }
 
+// ErrNoEnabledAbilities is returned by getPriority when the exact model has no
+// enabled abilities in the group. It is a signal that the exact model name has
+// no channels (as opposed to a real database error) and callers may fall back
+// to model-merge reverse matching.
+var ErrNoEnabledAbilities = errors.New("数据库一致性被破坏")
+
+// isNoEnabledAbilitiesError reports whether err is the "no enabled abilities"
+// sentinel from getPriority, i.e. the exact model has no channels.
+func isNoEnabledAbilitiesError(err error) bool {
+	return errors.Is(err, ErrNoEnabledAbilities)
+}
+
 func getPriority(group string, model string, retry int) (int, error) {
 
 	var priorities []int
@@ -76,7 +89,7 @@ func getPriority(group string, model string, retry int) (int, error) {
 
 	if len(priorities) == 0 {
 		// 如果没有查询到优先级，则返回错误
-		return 0, errors.New("数据库一致性被破坏")
+		return 0, ErrNoEnabledAbilities
 	}
 
 	// 确定要使用的优先级
@@ -126,6 +139,12 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 		if err != nil {
 			return nil, model, err
 		}
+	} else if !isNoEnabledAbilitiesError(err) {
+		// Only "no enabled abilities" (from getPriority when retry>0 and the
+		// exact model has no channels) means "exact name has no channel" and
+		// falls through to model-merge reverse matching. Real database errors
+		// must propagate, not be masked as "no channel available".
+		return nil, model, err
 	}
 	// getChannelQuery errors (e.g. "数据库一致性被破坏" from getPriority when
 	// the exact model has no enabled abilities and retry > 0) mean the exact
@@ -165,14 +184,47 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 	}
 	channel := Channel{}
 	if len(abilities) > 0 {
-		// Randomly choose one
-		weightSum := uint(0)
+		// Priority layering with retry (mirrors the memory-cache path): the
+		// exact query returns a single priority layer selected by retry, while
+		// merge-reverse abilities span all layers, so pick the layer for this
+		// retry index here.
+		uniquePriorities := make(map[int64]bool)
 		for _, ability_ := range abilities {
+			if ability_.Priority != nil {
+				uniquePriorities[*ability_.Priority] = true
+			}
+		}
+		var sortedUniquePriorities []int64
+		for p := range uniquePriorities {
+			sortedUniquePriorities = append(sortedUniquePriorities, p)
+		}
+		sort.Slice(sortedUniquePriorities, func(i, j int) bool {
+			return sortedUniquePriorities[i] > sortedUniquePriorities[j]
+		})
+		if retry >= len(sortedUniquePriorities) {
+			retry = len(sortedUniquePriorities) - 1
+		}
+		targetPriority := int64(0)
+		if len(sortedUniquePriorities) > 0 {
+			targetPriority = sortedUniquePriorities[retry]
+		}
+
+		// Restrict to the target priority layer.
+		layerAbilities := make([]Ability, 0, len(abilities))
+		for _, ability_ := range abilities {
+			if ability_.Priority == nil || *ability_.Priority == targetPriority {
+				layerAbilities = append(layerAbilities, ability_)
+			}
+		}
+
+		// Randomly choose one within the layer by weight
+		weightSum := uint(0)
+		for _, ability_ := range layerAbilities {
 			weightSum += ability_.Weight + 10
 		}
 		// Randomly choose one
 		weight := common.GetRandomInt(int(weightSum))
-		for _, ability_ := range abilities {
+		for _, ability_ := range layerAbilities {
 			weight -= int(ability_.Weight) + 10
 			//log.Printf("weight: %d, ability weight: %d", weight, *ability_.Weight)
 			if weight <= 0 {
@@ -190,13 +242,11 @@ func GetChannel(group string, model string, retry int, requestPath string, allow
 
 // getChannelByMergeReverse finds abilities whose channel-side model name merges
 // to the requested model name (per global merge rules). It queries the group's
-// enabled channel models, checks each against MergeModelName, and returns the
-// abilities for the matching channel-side model names. Only channels that are
-// currently enabled participate (a manually disabled channel may still carry
-// stale enabled abilities, which must not be routed to). Query failures for a
-// single merged model (e.g. getPriority reporting no enabled abilities) are
-// treated as "no channel for that name" and skipped, mirroring the exact-name
-// fall-through in GetChannel.
+// enabled channel models, checks each against MergeModelName, and returns all
+// enabled abilities for the matching channel-side model names (single batched
+// query, all priority layers). Only channels that are currently enabled
+// participate (a manually disabled channel may still carry stale enabled
+// abilities, which must not be routed to).
 func getChannelByMergeReverse(group string, model string, retry int, requestPath string, allowedChannelIds []int) ([]Ability, error) {
 	var channelModels []string
 	if err := DB.Model(&Ability{}).
@@ -204,29 +254,31 @@ func getChannelByMergeReverse(group string, model string, retry int, requestPath
 		Distinct().Pluck("model", &channelModels).Error; err != nil {
 		return nil, err
 	}
-	var result []Ability
-	requestCanonical := MergeModelName(model)
+	requestCanonical := MergeModelNameCached(model)
+	matchedModels := make([]string, 0)
 	for _, channelModel := range channelModels {
 		if channelModel == model {
 			continue
 		}
-		if MergeModelName(channelModel) != requestCanonical {
+		if MergeModelNameCached(channelModel) != requestCanonical {
 			continue
 		}
-		// Use retry=0 so getPriority does not abort when the merged model has
-		// no enabled abilities; priority selection happens in GetChannel.
-		channelQuery, err := getChannelQuery(group, channelModel, 0)
-		if err != nil {
-			continue
-		}
-		var abilities []Ability
-		if err := channelQuery.Order("weight DESC").Find(&abilities).Error; err != nil {
-			continue
-		}
-		result = append(result, abilities...)
+		matchedModels = append(matchedModels, channelModel)
+	}
+	if len(matchedModels) == 0 {
+		return nil, nil
+	}
+	// Batch query all enabled abilities for the matched models in one round
+	// trip instead of one query per model.
+	var result []Ability
+	if err := DB.Model(&Ability{}).
+		Where(commonGroupCol+" = ? and enabled = ? and model IN ?", group, true, matchedModels).
+		Order("weight DESC").
+		Find(&result).Error; err != nil {
+		return nil, err
 	}
 	if len(result) == 0 {
-		return result, nil
+		return nil, nil
 	}
 	// Filter out channels that are not currently enabled: a channel may be
 	// manually disabled while its abilities rows still say enabled.
