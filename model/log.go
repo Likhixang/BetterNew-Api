@@ -21,13 +21,19 @@ func applyExplicitLogTextFilter(tx *gorm.DB, column string, value string) (*gorm
 		return tx, nil
 	}
 	if strings.Contains(value, "%") {
+		// 用户显式输入 % 通配符时，按 LIKE pattern 处理（保留高级用法）
 		condition, pattern, err := buildLogLikeCondition(column, value)
 		if err != nil {
 			return nil, err
 		}
 		return tx.Where(condition, pattern), nil
 	}
-	return tx.Where(column+" = ?", value), nil
+	// 默认模糊匹配：普通关键词前后自动加 %，_ 等通配符会被转义为字面量
+	condition, pattern, err := buildLogLikeCondition(column, "%"+value+"%")
+	if err != nil {
+		return nil, err
+	}
+	return tx.Where(condition, pattern), nil
 }
 
 func buildLogLikeCondition(column string, value string) (string, string, error) {
