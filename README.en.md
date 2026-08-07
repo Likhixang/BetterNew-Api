@@ -102,6 +102,7 @@ This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNou
 - **Form reset fix**: closing the create-channel drawer after a successful submission properly resets the form and advanced-settings panel state
 - **Usage-log IP column**: common logs show an IP column (after enabling "Record IP Address" under Profile → Notifications, consume/error logs record and display the client IP)
 - **Models page defaults to merges**: the Models page tab order is Merges → Metadata → Deployments, landing on Model Merges by default
+- **Fuzzy log filters**: the model-name and username filters on usage logs now match partially — typing `gpt-4` matches `gpt-4o` / `gpt-4-turbo` without the exact name; explicit `%` wildcards still work for fine-grained control
 
 ## Quick Start
 
